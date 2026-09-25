@@ -29,6 +29,10 @@ A aplicação não depende do disco do servidor para guardar banco ou mídia. Is
 - seção de referências gerada automaticamente;
 - fontes preservadas no histórico de versões;
 - validação de citações sem fonte cadastrada;
+- infoboxes configuráveis por artigo;
+- imagem opcional da biblioteca de mídia nas infoboxes;
+- até 20 pares campo/valor por infobox;
+- infobox preservada no histórico de versões;
 - instalação do primeiro administrador;
 - login e sessões;
 - papéis de **administrador** e **colaborador**;
@@ -97,7 +101,20 @@ Em produção, `SESSION_SECRET` precisa ter pelo menos 32 caracteres.
 
 ## Versão atual
 
-**0.4.0** — fontes, referências e citações estruturadas implementadas de ponta a ponta.
+**0.5.0** — infoboxes configuráveis implementadas de ponta a ponta, com validação real das migrações PostgreSQL no CI.
+
+## Infoboxes
+
+O editor permite adicionar uma infobox opcional a qualquer artigo. Ela pode conter:
+
+- título próprio;
+- imagem já existente na biblioteca de mídia;
+- legenda;
+- até 20 pares de campo e valor.
+
+A infobox é genérica, então pode ser usada em artigos sobre pessoas, países, softwares, empresas, eventos e outros temas sem exigir um tipo específico de formulário.
+
+Cada versão salva guarda um snapshot da infobox daquele momento.
 
 ## Fluxo editorial
 
@@ -151,6 +168,8 @@ A biblioteca de mídia gera o código da imagem automaticamente.
 - `views/` — templates EJS;
 - `assets/` — CSS, JavaScript e marca;
 - `scripts/check-views.js` — validação dos templates;
+- `scripts/check-citations.js` — testes do renderizador de citações;
+- `scripts/check-db.js` — sobe o schema e valida as migrações PostgreSQL no CI;
 - `docker-compose.yml` — PostgreSQL para desenvolvimento local.
 
 ## Hospedagem
