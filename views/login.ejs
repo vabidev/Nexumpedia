@@ -1,0 +1,22 @@
+<%- include("partials/header", { title, showSearch: false }) %>
+<main class="auth-shell">
+  <section class="auth-card">
+    <img class="auth-logo" src="/assets/img/nexumpedia-mark.svg" alt="">
+    <h1>Entrar</h1>
+    <p class="muted">A área editorial é reservada a administradores e colaboradores autorizados.</p>
+
+    <% if (error) { %><div class="form-errors"><%= error %></div><% } %>
+
+    <form method="post" class="stack-form">
+      <input type="hidden" name="_csrf" value="<%= csrf %>">
+      <label>Usuário ou e-mail
+        <input name="identity" required autofocus autocomplete="username" value="<%= identity %>">
+      </label>
+      <label>Senha
+        <input type="password" name="password" required autocomplete="current-password">
+      </label>
+      <button class="primary" type="submit">Entrar</button>
+    </form>
+  </section>
+</main>
+<%- include("partials/footer") %>
