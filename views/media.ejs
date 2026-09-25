@@ -1,0 +1,43 @@
+<%- include("partials/header", { title, showSearch: false }) %>
+<main class="admin-shell">
+  <div class="admin-header">
+    <div><div class="meta">Área editorial</div><h1>Biblioteca de mídia</h1></div>
+    <a class="secondary" href="/painel">← Painel</a>
+  </div>
+
+  <% if (error) { %><div class="form-errors"><%= error %></div><% } %>
+
+  <section class="card upload-card">
+    <div class="card-title">Enviar imagem</div>
+    <div class="card-body">
+      <form method="post" enctype="multipart/form-data" class="upload-form">
+        <input type="hidden" name="_csrf" value="<%= csrf %>">
+        <label>Imagem
+          <input type="file" name="image" accept="image/jpeg,image/png,image/webp,image/gif" required>
+        </label>
+        <label>Texto alternativo / legenda
+          <input name="alt_text" maxlength="180" placeholder="Descreva o que aparece na imagem">
+        </label>
+        <button class="primary">Enviar</button>
+      </form>
+      <p class="meta">Máximo de 5 MB. A imagem é persistida no banco PostgreSQL, sem depender do disco do servidor.</p>
+    </div>
+  </section>
+
+  <div class="media-grid">
+    <% if (!media.length) { %><p>Nenhuma imagem enviada ainda.</p><% } %>
+    <% for (const item of media) { const markup = "![" + (item.alt_text || "Imagem") + "](/media/" + item.id + ")"; %>
+      <article class="media-card">
+        <img src="/media/<%= item.id %>" alt="<%= item.alt_text %>">
+        <div class="media-card-body">
+          <strong><%= item.original_name %></strong>
+          <div class="meta"><%= item.uploader_name %> · <%= Math.round(item.size / 1024).toLocaleString("pt-BR") %> KB</div>
+          <label>Código para o artigo
+            <input readonly value="<%= markup %>" onclick="this.select()">
+          </label>
+        </div>
+      </article>
+    <% } %>
+  </div>
+</main>
+<%- include("partials/footer") %>
