@@ -21,6 +21,9 @@ A aplicação não depende do disco do servidor para guardar banco ou mídia. Is
 
 - página inicial e pesquisa em artigos publicados;
 - páginas públicas de artigo;
+- categorias normalizadas de artigos;
+- navegação e pesquisa por categoria;
+- categorias registradas no histórico de versões;
 - instalação do primeiro administrador;
 - login e sessões;
 - papéis de **administrador** e **colaborador**;
@@ -86,6 +89,10 @@ SESSION_SECRET=uma-chave-longa-e-aleatoria
 ```
 
 Em produção, `SESSION_SECRET` precisa ter pelo menos 32 caracteres.
+
+## Versão atual
+
+**0.3.0** — categorias implementadas de ponta a ponta.
 
 ## Fluxo editorial
 
