@@ -27,7 +27,7 @@
         <label>Para
           <select name="to" required>
             <% for (let i = 0; i < versions.length; i += 1) { const version = versions[i]; %>
-              <option value="<%= version.version_no %>" <%= i === 0 ? "selected" : "" %>>#<%= version.version_no %> — <%= formatDate(version.created_at) %></option>
+              <option value="<%= version.version_no %>" <%= i === 1 ? "selected" : "" %>>#<%= version.version_no %> — <%= formatDate(version.created_at) %></option>
             <% } %>
           </select>
         </label>
