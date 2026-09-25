@@ -23,20 +23,6 @@
     });
   });
 
-  document.querySelectorAll(".search").forEach(form => {
-    form.addEventListener("submit", event => {
-      event.preventDefault();
-      const query = form.querySelector("input")?.value.trim();
-      if (!query) return;
-      const normalized = query.toLocaleLowerCase("pt-BR");
-      if (["nexumpedia","enciclopédia","enciclopedia"].includes(normalized)) {
-        window.location.href = "artigo.html";
-        return;
-      }
-      alert("A busca por “" + query + "” será conectada ao índice real na etapa de backend.");
-    });
-  });
-
   const headings = [...document.querySelectorAll(".article h2[id], .article h3[id]")];
   const tocLinks = [...document.querySelectorAll(".toc-side a")];
   if (headings.length && tocLinks.length && "IntersectionObserver" in window) {
