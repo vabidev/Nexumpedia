@@ -24,6 +24,11 @@ A aplicação não depende do disco do servidor para guardar banco ou mídia. Is
 - categorias normalizadas de artigos;
 - navegação e pesquisa por categoria;
 - categorias registradas no histórico de versões;
+- referências estruturadas por artigo;
+- citações inline com sintaxe `[^chave]`;
+- seção de referências gerada automaticamente;
+- fontes preservadas no histórico de versões;
+- validação de citações sem fonte cadastrada;
 - instalação do primeiro administrador;
 - login e sessões;
 - papéis de **administrador** e **colaborador**;
@@ -92,7 +97,7 @@ Em produção, `SESSION_SECRET` precisa ter pelo menos 32 caracteres.
 
 ## Versão atual
 
-**0.3.0** — categorias implementadas de ponta a ponta.
+**0.4.0** — fontes, referências e citações estruturadas implementadas de ponta a ponta.
 
 ## Fluxo editorial
 
@@ -112,9 +117,28 @@ Em produção, `SESSION_SECRET` precisa ter pelo menos 32 caracteres.
 **negrito**
 *itálico*
 - item de lista
-[fonte](https://exemplo.com)
+[link](https://exemplo.com)
+[^ibge2026]
 ![Descrição](/media/123)
 ```
+
+### Referências e citações
+
+As fontes são cadastradas no editor com uma chave curta, título e metadados opcionais como autor, publicação, URL e datas.
+
+Exemplo de chave:
+
+```text
+ibge2026
+```
+
+No conteúdo, a citação é inserida assim:
+
+```text
+O dado apresentado aqui precisa de uma fonte.[^ibge2026]
+```
+
+A página publicada converte a marcação em uma nota numerada e cria a seção **Referências** automaticamente. O salvamento é bloqueado quando existe uma citação no texto sem a fonte correspondente cadastrada.
 
 A biblioteca de mídia gera o código da imagem automaticamente.
 
