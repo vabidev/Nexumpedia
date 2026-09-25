@@ -27,6 +27,9 @@ import {
   headingsFromContent,
   renderMarkup,
   citationKeysFromContent,
+  diffLines,
+  normalizeSnapshotReferences,
+  normalizeSnapshotInfobox,
   statusLabel,
   uniqueSlug,
 } from "./helpers.js";
@@ -636,6 +639,91 @@ app.get("/editor", requireLogin, async (req, res, next) => {
   }
 });
 
+app.post("/editor/preview", requireLogin, requireCsrf, async (req, res, next) => {
+  try {
+    const id = Number(req.body.id || 0);
+    const title = String(req.body.title || "").trim();
+    const summary = String(req.body.summary || "").trim();
+    const content = String(req.body.content || "").trim();
+    const categoryNames = parseCategories(req.body.categories);
+    const categoriesText = categoryNames.join(", ");
+    const references = parseReferences(req.body);
+    const infobox = parseInfobox(req.body);
+    const errors = [];
+
+    let existing = null;
+    if (id) {
+      const result = await pool.query("SELECT * FROM articles WHERE id = $1", [id]);
+      existing = result.rows[0];
+      if (!existing) return res.status(404).render("404", { title: "Artigo não encontrado" });
+      if (!canEditArticle(existing, req.user)) {
+        return res.status(403).send("Sem permissão para pré-visualizar alterações neste artigo.");
+      }
+    }
+
+    if (title.length < 2 || title.length > 180) errors.push("Título inválido.");
+    if (summary.length > 500) errors.push("Resumo muito longo.");
+    if (content.length < 10) errors.push("O artigo precisa ter conteúdo.");
+    if (categoryNames.some((name) => name.length < 2 || name.length > 60)) {
+      errors.push("Cada categoria deve ter entre 2 e 60 caracteres.");
+    }
+    errors.push(...validateReferences(references, content));
+    errors.push(...validateInfobox(infobox));
+    errors.push(...await validateInfoboxMedia(infobox));
+
+    if (errors.length) {
+      const { rows: media } = await pool.query(
+        "SELECT id, original_name, alt_text FROM media ORDER BY created_at DESC LIMIT 100",
+      );
+      return res.status(422).render("editor", {
+        title: existing ? "Editar artigo" : "Novo artigo",
+        article: { ...(existing || {}), id, title, summary, content },
+        categories: categoriesText,
+        references,
+        infobox,
+        media,
+        errors,
+      });
+    }
+
+    let previewInfobox = infobox;
+    if (infobox.media_id) {
+      const mediaResult = await pool.query(
+        "SELECT id, original_name, alt_text FROM media WHERE id = $1",
+        [infobox.media_id],
+      );
+      const media = mediaResult.rows[0];
+      previewInfobox = {
+        ...infobox,
+        media_alt: media?.alt_text || "",
+        media_name: media?.original_name || "",
+      };
+    }
+
+    res.render("preview", {
+      title: "Pré-visualização: " + title,
+      article: {
+        id: existing?.id || null,
+        slug: existing?.slug || "preview",
+        title,
+        summary,
+        content,
+        status: existing?.status || "draft",
+        published_at: existing?.published_at || null,
+        updated_at: new Date(),
+        author_name: req.user.display_name,
+      },
+      categories: categoryNames,
+      references,
+      infobox: previewInfobox,
+      headings: headingsFromContent(content),
+      renderedContent: renderMarkup(content, references),
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
 app.post("/editor", requireLogin, requireCsrf, async (req, res, next) => {
   const id = Number(req.body.id || 0);
   const title = String(req.body.title || "").trim();
@@ -734,6 +822,174 @@ app.post("/editor", requireLogin, requireCsrf, async (req, res, next) => {
 
     flash(req, "success", `Artigo salvo. Estado atual: ${statusLabel(status)}.`);
     res.redirect(`/editor?id=${articleId}`);
+  } catch (error) {
+    await client.query("ROLLBACK");
+    next(error);
+  } finally {
+    client.release();
+  }
+});
+
+app.get("/historico/:slug/comparar", async (req, res, next) => {
+  try {
+    const articleResult = await pool.query("SELECT * FROM articles WHERE slug = $1", [req.params.slug]);
+    const article = articleResult.rows[0];
+    if (!article) return res.status(404).render("404", { title: "Artigo não encontrado" });
+
+    const editorAccess = canEditArticle(article, req.user);
+    if (article.status !== "published" && !editorAccess) {
+      return res.status(404).render("404", { title: "Artigo não encontrado" });
+    }
+
+    const fromNo = Number(req.query.from || 0);
+    const toNo = Number(req.query.to || 0);
+    if (!Number.isInteger(fromNo) || !Number.isInteger(toNo) || fromNo < 1 || toNo < 1 || fromNo === toNo) {
+      return res.status(422).send("Escolha duas versões diferentes para comparar.");
+    }
+
+    const extra = editorAccess ? "" : "AND status = 'published'";
+    const { rows } = await pool.query(
+      `SELECT * FROM article_versions
+       WHERE article_id = $1 AND version_no IN ($2, $3) ${extra}
+       ORDER BY version_no ASC`,
+      [article.id, fromNo, toNo],
+    );
+
+    if (rows.length !== 2) {
+      return res.status(404).render("404", { title: "Versão não encontrada" });
+    }
+
+    const byNo = new Map(rows.map((version) => [Number(version.version_no), version]));
+    const from = byNo.get(fromNo);
+    const to = byNo.get(toNo);
+
+    res.render("compare", {
+      title: `Comparar versões de ${article.title}`,
+      article,
+      from,
+      to,
+      titleDiff: diffLines(from.title, to.title),
+      summaryDiff: diffLines(from.summary, to.summary),
+      contentDiff: diffLines(from.content, to.content),
+      categoriesDiff: diffLines(from.categories, to.categories),
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.get("/historico/:slug/:versionNo", async (req, res, next) => {
+  try {
+    const articleResult = await pool.query("SELECT * FROM articles WHERE slug = $1", [req.params.slug]);
+    const article = articleResult.rows[0];
+    if (!article) return res.status(404).render("404", { title: "Artigo não encontrado" });
+
+    const editorAccess = canEditArticle(article, req.user);
+    if (article.status !== "published" && !editorAccess) {
+      return res.status(404).render("404", { title: "Artigo não encontrado" });
+    }
+
+    const versionNo = Number(req.params.versionNo);
+    if (!Number.isInteger(versionNo) || versionNo < 1) {
+      return res.status(404).render("404", { title: "Versão não encontrada" });
+    }
+
+    const extra = editorAccess ? "" : "AND v.status = 'published'";
+    const { rows } = await pool.query(
+      `SELECT v.*, u.display_name AS editor_name
+       FROM article_versions v
+       JOIN users u ON u.id = v.editor_id
+       WHERE v.article_id = $1 AND v.version_no = $2 ${extra}
+       LIMIT 1`,
+      [article.id, versionNo],
+    );
+    const version = rows[0];
+    if (!version) return res.status(404).render("404", { title: "Versão não encontrada" });
+
+    const references = normalizeSnapshotReferences(version.references_snapshot);
+    const infobox = normalizeSnapshotInfobox(version.infobox_snapshot);
+
+    if (infobox?.media_id) {
+      const mediaResult = await pool.query(
+        "SELECT original_name, alt_text FROM media WHERE id = $1",
+        [infobox.media_id],
+      );
+      const media = mediaResult.rows[0];
+      if (media) {
+        infobox.media_alt = media.alt_text;
+        infobox.media_name = media.original_name;
+      } else {
+        infobox.media_id = null;
+      }
+    }
+
+    res.render("version", {
+      title: `${article.title} — versão ${version.version_no}`,
+      article,
+      version,
+      references,
+      infobox,
+      categories: version.categories
+        ? version.categories.split(",").map((name) => name.trim()).filter(Boolean)
+        : [],
+      headings: headingsFromContent(version.content),
+      renderedContent: renderMarkup(version.content, references),
+      canRestore: editorAccess,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post("/historico/:slug/:versionNo/restaurar", requireLogin, requireCsrf, async (req, res, next) => {
+  const articleResult = await pool.query("SELECT * FROM articles WHERE slug = $1", [req.params.slug]);
+  const article = articleResult.rows[0];
+  if (!article) return res.status(404).render("404", { title: "Artigo não encontrado" });
+  if (!canEditArticle(article, req.user)) {
+    return res.status(403).send("Sem permissão para restaurar versões deste artigo.");
+  }
+
+  const versionNo = Number(req.params.versionNo);
+  const versionResult = await pool.query(
+    "SELECT * FROM article_versions WHERE article_id = $1 AND version_no = $2 LIMIT 1",
+    [article.id, versionNo],
+  );
+  const version = versionResult.rows[0];
+  if (!version) return res.status(404).render("404", { title: "Versão não encontrada" });
+
+  const categories = version.categories
+    ? version.categories.split(",").map((name) => name.trim()).filter(Boolean)
+    : [];
+  const references = normalizeSnapshotReferences(version.references_snapshot);
+  const infobox = normalizeSnapshotInfobox(version.infobox_snapshot) || {
+    title: "",
+    media_id: null,
+    caption: "",
+    fields: [],
+  };
+
+  if (infobox.media_id) {
+    const mediaExists = await pool.query("SELECT id FROM media WHERE id = $1", [infobox.media_id]);
+    if (!mediaExists.rows.length) infobox.media_id = null;
+  }
+
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    await client.query(
+      `UPDATE articles
+       SET title = $1, summary = $2, content = $3, updated_at = NOW()
+       WHERE id = $4`,
+      [version.title, version.summary, version.content, article.id],
+    );
+    await syncArticleCategories(client, article.id, categories);
+    await syncArticleReferences(client, article.id, references);
+    await syncArticleInfobox(client, article.id, infobox);
+    await saveArticleVersion(client, article.id, req.user.id);
+    await client.query("COMMIT");
+
+    flash(req, "success", `Versão #${version.version_no} restaurada como uma nova versão.`);
+    res.redirect(`/editor?id=${article.id}`);
   } catch (error) {
     await client.query("ROLLBACK");
     next(error);
