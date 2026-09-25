@@ -8,3 +8,11 @@ dist/
 build/
 coverage/
 *.log
+
+data/*
+!data/.htaccess
+!data/index.html
+
+uploads/*
+!uploads/.htaccess
+!uploads/index.html
