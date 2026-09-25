@@ -17,10 +17,10 @@
 
     <div class="table-wrap">
       <table>
-        <thead><tr><th>Versão</th><th>Estado</th><th>Editor</th><th>Data</th><th>Resumo</th></tr></thead>
+        <thead><tr><th>Versão</th><th>Estado</th><th>Editor</th><th>Data</th><th>Categorias</th><th>Resumo</th></tr></thead>
         <tbody>
           <% if (!versions.length) { %>
-            <tr><td colspan="5">Nenhuma versão disponível.</td></tr>
+            <tr><td colspan="6">Nenhuma versão disponível.</td></tr>
           <% } else { %>
             <% for (const version of versions) { %>
               <tr>
@@ -28,6 +28,7 @@
                 <td><span class="badge <%= version.status === "published" ? "good" : "" %>"><%= statusLabel(version.status) %></span></td>
                 <td><%= version.editor_name %></td>
                 <td><%= formatDate(version.created_at) %></td>
+                <td><%= version.categories || "—" %></td>
                 <td><%= version.summary.length > 100 ? version.summary.slice(0,100) + "…" : version.summary %></td>
               </tr>
             <% } %>
