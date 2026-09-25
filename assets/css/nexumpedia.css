@@ -180,3 +180,12 @@ label input,label textarea,label select{display:block;margin-top:5px;font-weight
   .auth-shell{padding-top:30px}
   .auth-card{padding:20px}
 }
+
+.field-hint{display:block;margin-top:5px;color:var(--muted);font-size:12px;font-weight:400}
+.article-categories{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:30px 0 12px;padding:10px 12px;border:1px solid var(--border);background:var(--surface);font-size:13px}
+.article-categories span{font-weight:600;margin-right:2px}
+.article-categories a{border-left:1px solid var(--border);padding-left:7px}
+.category-strip{display:flex;flex-wrap:wrap;gap:7px;margin:0 0 18px}
+.category-strip a{display:inline-flex;gap:6px;align-items:center;padding:5px 9px;border:1px solid var(--border);background:var(--surface);color:var(--text);border-radius:2px}
+.category-strip a:hover,.category-strip a.active{text-decoration:none;border-color:var(--brand-2);background:var(--surface-2)}
+.category-strip span{color:var(--muted);font-size:11px}
