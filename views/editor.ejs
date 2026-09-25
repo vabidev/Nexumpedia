@@ -51,10 +51,84 @@
         <code>**negrito**</code>
         <code>*itálico*</code>
         <code>- item de lista</code>
-        <code>[fonte](https://...)</code>
+        <code>[link](https://...)</code>
+        <code>[^fonte1]</code>
+        <p><strong>Citação:</strong> cadastre a fonte abaixo e use a chave entre <code>[^ ]</code> no ponto do texto que precisa da nota.</p>
         <p>Imagens enviadas na <a href="/midia" target="_blank">biblioteca de mídia</a> fornecem um código pronto para colar no artigo.</p>
       </aside>
     </div>
+
+    <section class="reference-editor">
+      <div class="reference-editor-head">
+        <div>
+          <h2>Fontes e referências</h2>
+          <p class="meta">Cadastre a fonte e use sua chave no texto, por exemplo <code>[^ibge2026]</code>.</p>
+        </div>
+        <button class="secondary" type="button" data-add-reference>+ Adicionar fonte</button>
+      </div>
+
+      <div data-reference-list>
+        <% for (const ref of references || []) { %>
+          <div class="reference-row" data-reference-row>
+            <div class="reference-row-head">
+              <strong>Referência</strong>
+              <div class="button-row">
+                <button class="link-button" type="button" data-insert-citation>Inserir citação</button>
+                <button class="link-button danger-text" type="button" data-remove-reference>Remover</button>
+              </div>
+            </div>
+            <div class="reference-fields">
+              <label>Chave
+                <input name="ref_key" maxlength="40" required value="<%= ref.citation_key || "" %>" placeholder="ibge2026" data-reference-key>
+              </label>
+              <label class="reference-title-field">Título
+                <input name="ref_title" maxlength="240" required value="<%= ref.title || "" %>" placeholder="Título da publicação">
+              </label>
+              <label>Autor
+                <input name="ref_author" maxlength="160" value="<%= ref.author || "" %>" placeholder="Autor ou instituição">
+              </label>
+              <label>Publicação
+                <input name="ref_publisher" maxlength="160" value="<%= ref.publisher || "" %>" placeholder="Editora, jornal, órgão...">
+              </label>
+              <label class="reference-url-field">URL
+                <input type="url" name="ref_url" value="<%= ref.url || "" %>" placeholder="https://...">
+              </label>
+              <label>Data da publicação
+                <input type="date" name="ref_published_date" value="<%= ref.published_date || "" %>">
+              </label>
+              <label>Data de acesso
+                <input type="date" name="ref_accessed_date" value="<%= ref.accessed_date || "" %>">
+              </label>
+              <label class="reference-note-field">Observação
+                <input name="ref_note" maxlength="300" value="<%= ref.note || "" %>" placeholder="Página, edição, capítulo ou outra observação">
+              </label>
+            </div>
+          </div>
+        <% } %>
+      </div>
+
+      <template id="reference-row-template">
+        <div class="reference-row" data-reference-row>
+          <div class="reference-row-head">
+            <strong>Referência</strong>
+            <div class="button-row">
+              <button class="link-button" type="button" data-insert-citation>Inserir citação</button>
+              <button class="link-button danger-text" type="button" data-remove-reference>Remover</button>
+            </div>
+          </div>
+          <div class="reference-fields">
+            <label>Chave<input name="ref_key" maxlength="40" required placeholder="fonte1" data-reference-key></label>
+            <label class="reference-title-field">Título<input name="ref_title" maxlength="240" required placeholder="Título da publicação"></label>
+            <label>Autor<input name="ref_author" maxlength="160" placeholder="Autor ou instituição"></label>
+            <label>Publicação<input name="ref_publisher" maxlength="160" placeholder="Editora, jornal, órgão..."></label>
+            <label class="reference-url-field">URL<input type="url" name="ref_url" placeholder="https://..."></label>
+            <label>Data da publicação<input type="date" name="ref_published_date"></label>
+            <label>Data de acesso<input type="date" name="ref_accessed_date"></label>
+            <label class="reference-note-field">Observação<input name="ref_note" maxlength="300" placeholder="Página, edição, capítulo ou outra observação"></label>
+          </div>
+        </div>
+      </template>
+    </section>
 
     <div class="editor-actions">
       <button class="secondary" type="submit" name="action" value="save">Salvar rascunho</button>
