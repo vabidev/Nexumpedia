@@ -21,6 +21,25 @@
       <div class="notice"><strong><%= statusLabel(article.status) %>.</strong> Esta versão só está visível porque você possui acesso editorial.</div>
     <% } %>
 
+    <% if (infobox) { %>
+      <aside class="infobox">
+        <div class="infobox-title"><%= infobox.title || article.title %></div>
+        <% if (infobox.media_id) { %>
+          <div class="infobox-media">
+            <img src="/media/<%= infobox.media_id %>" alt="<%= infobox.media_alt || infobox.caption || infobox.media_name || article.title %>">
+            <% if (infobox.caption) { %><div class="infobox-caption"><%= infobox.caption %></div><% } %>
+          </div>
+        <% } %>
+        <% if (infobox.fields.length) { %>
+          <dl>
+            <% for (const field of infobox.fields) { %>
+              <dt><%= field.label %></dt><dd><%= field.value %></dd>
+            <% } %>
+          </dl>
+        <% } %>
+      </aside>
+    <% } %>
+
     <% if (article.summary) { %><p class="lead"><%= article.summary %></p><% } %>
 
     <% if (headings.length || references.length) { %>
