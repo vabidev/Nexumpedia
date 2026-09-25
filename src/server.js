@@ -9,7 +9,14 @@ import multer from "multer";
 import helmet from "helmet";
 import compression from "compression";
 
-import { pool, migrate, hasUsers, saveArticleVersion } from "./db.js";
+import {
+  pool,
+  migrate,
+  hasUsers,
+  saveArticleVersion,
+  syncArticleCategories,
+  getArticleCategories,
+} from "./db.js";
 import {
   canEditArticle,
   formatDate,
@@ -82,6 +89,15 @@ app.use(exposeFlash);
 app.locals.statusLabel = statusLabel;
 app.locals.formatDate = formatDate;
 
+function parseCategories(value = "") {
+  return [...new Set(
+    String(value)
+      .split(",")
+      .map((name) => name.trim().replace(/\s+/g, " "))
+      .filter(Boolean),
+  )].slice(0, 8);
+}
+
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 5 * 1024 * 1024 },
@@ -115,11 +131,73 @@ app.get("/", async (req, res, next) => {
       params,
     );
 
+    const { rows: categories } = await pool.query(
+      `SELECT c.name, c.slug, COUNT(a.id)::int AS article_count
+       FROM categories c
+       JOIN article_categories ac ON ac.category_id = c.id
+       JOIN articles a ON a.id = ac.article_id AND a.status = 'published'
+       GROUP BY c.id, c.name, c.slug
+       ORDER BY c.name ASC`,
+    );
+
     res.render("index", {
       title: "Nexumpedia",
       q,
       articles,
+      categories,
+      selectedCategory: null,
       needsInstall: !(await hasUsers()),
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.get("/categoria/:slug", async (req, res, next) => {
+  try {
+    const categoryResult = await pool.query(
+      "SELECT id, name, slug, description FROM categories WHERE slug = $1 LIMIT 1",
+      [req.params.slug],
+    );
+    const category = categoryResult.rows[0];
+    if (!category) return res.status(404).render("404", { title: "Categoria não encontrada" });
+
+    const q = String(req.query.q || "").trim();
+    const params = [category.id];
+    let search = "";
+    if (q) {
+      params.push(`%${q}%`);
+      search = " AND (a.title ILIKE $2 OR a.summary ILIKE $2 OR a.content ILIKE $2)";
+    }
+
+    const { rows: articles } = await pool.query(
+      `SELECT a.id, a.slug, a.title, a.summary, a.published_at, a.updated_at,
+              u.display_name AS author
+       FROM articles a
+       JOIN users u ON u.id = a.author_id
+       JOIN article_categories ac ON ac.article_id = a.id
+       WHERE a.status = 'published' AND ac.category_id = $1 ${search}
+       ORDER BY COALESCE(a.published_at, a.updated_at) DESC, a.title ASC
+       LIMIT 50`,
+      params,
+    );
+
+    const { rows: categories } = await pool.query(
+      `SELECT c.name, c.slug, COUNT(a.id)::int AS article_count
+       FROM categories c
+       JOIN article_categories ac ON ac.category_id = c.id
+       JOIN articles a ON a.id = ac.article_id AND a.status = 'published'
+       GROUP BY c.id, c.name, c.slug
+       ORDER BY c.name ASC`,
+    );
+
+    res.render("index", {
+      title: `Categoria: ${category.name}`,
+      q,
+      articles,
+      categories,
+      selectedCategory: category,
+      needsInstall: false,
     });
   } catch (error) {
     next(error);
@@ -292,9 +370,12 @@ app.get("/artigo/:slug", async (req, res, next) => {
 
     if (!visible) return res.status(404).render("404", { title: "Artigo não encontrado" });
 
+    const categories = await getArticleCategories(article.id);
+
     res.render("article", {
       title: article.title,
       article,
+      categories,
       headings: headingsFromContent(article.content),
       renderedContent: renderMarkup(article.content),
       editable: canEditArticle(article, req.user),
@@ -371,9 +452,14 @@ app.get("/editor", requireLogin, async (req, res, next) => {
       if (!canEditArticle(article, req.user)) return res.status(403).send("Sem permissão para editar este artigo.");
     }
 
+    const categories = article
+      ? (await getArticleCategories(article.id)).map((category) => category.name).join(", ")
+      : "";
+
     res.render("editor", {
       title: article ? "Editar artigo" : "Novo artigo",
       article,
+      categories,
       errors: [],
     });
   } catch (error) {
@@ -386,6 +472,8 @@ app.post("/editor", requireLogin, requireCsrf, async (req, res, next) => {
   const title = String(req.body.title || "").trim();
   const summary = String(req.body.summary || "").trim();
   const content = String(req.body.content || "").trim();
+  const categoryNames = parseCategories(req.body.categories);
+  const categories = categoryNames.join(", ");
   const action = String(req.body.action || "save");
   const errors = [];
 
@@ -396,6 +484,9 @@ app.post("/editor", requireLogin, requireCsrf, async (req, res, next) => {
   if (title.length < 2 || title.length > 180) errors.push("Título inválido.");
   if (summary.length > 500) errors.push("Resumo muito longo.");
   if (content.length < 10) errors.push("O artigo precisa ter conteúdo.");
+  if (categoryNames.some((name) => name.length < 2 || name.length > 60)) {
+    errors.push("Cada categoria deve ter entre 2 e 60 caracteres.");
+  }
   if (!allowedActions.includes(action)) errors.push("Ação editorial inválida.");
 
   let article = null;
@@ -410,6 +501,7 @@ app.post("/editor", requireLogin, requireCsrf, async (req, res, next) => {
     return res.status(422).render("editor", {
       title: article ? "Editar artigo" : "Novo artigo",
       article: { ...(article || {}), id, title, summary, content },
+      categories,
       errors,
     });
   }
@@ -455,6 +547,7 @@ app.post("/editor", requireLogin, requireCsrf, async (req, res, next) => {
       articleId = result.rows[0].id;
     }
 
+    await syncArticleCategories(client, articleId, categoryNames);
     await saveArticleVersion(client, articleId, req.user.id);
     await client.query("COMMIT");
 
