@@ -1,0 +1,58 @@
+<%- include("partials/header", { title, q }) %>
+<div class="page">
+  <%- include("partials/sidebar") %>
+
+  <main class="article">
+    <section class="home-hero">
+      <div>
+        <h1><%= q ? "Resultados da pesquisa" : "Bem-vindo à Nexumpedia" %></h1>
+        <p><%= q ? 'Resultados para “' + q + '”.' : "Uma enciclopédia digital construída sobre pesquisa, revisão e responsabilidade editorial." %></p>
+      </div>
+      <% if (!q) { %><div class="meta"><%= articles.length %> artigo(s) publicado(s)</div><% } %>
+    </section>
+
+    <% if (needsInstall) { %>
+      <div class="notice"><strong>Primeira execução.</strong> A Nexumpedia ainda não possui administrador. <a href="/install">Concluir instalação →</a></div>
+    <% } %>
+
+    <% if (!q && articles.length) { const featured = articles[0]; %>
+      <section class="card">
+        <div class="card-title">Artigo em destaque</div>
+        <div class="card-body">
+          <h3 style="margin-top:0"><a href="/artigo/<%= encodeURIComponent(featured.slug) %>"><%= featured.title %></a></h3>
+          <p><%= featured.summary %></p>
+          <p class="meta">Publicado por <%= featured.author %> · <%= formatDate(featured.published_at) %></p>
+          <a href="/artigo/<%= encodeURIComponent(featured.slug) %>">Ler artigo →</a>
+        </div>
+      </section>
+    <% } %>
+
+    <section class="card" id="artigos">
+      <div class="card-title"><%= q ? "Resultados" : "Artigos publicados" %></div>
+      <div class="card-body">
+        <% if (!articles.length) { %>
+          <p>Nenhum artigo encontrado.</p>
+        <% } else { %>
+          <ul class="article-list article-index">
+            <% for (const article of articles) { %>
+              <li>
+                <a href="/artigo/<%= encodeURIComponent(article.slug) %>"><strong><%= article.title %></strong></a>
+                <% if (article.summary) { %> — <%= article.summary %><% } %>
+                <div class="meta">Atualizado em <%= formatDate(article.updated_at) %></div>
+              </li>
+            <% } %>
+          </ul>
+        <% } %>
+      </div>
+    </section>
+
+    <footer class="footer">Nexumpedia — Conhecimento em conexão.</footer>
+  </main>
+
+  <aside class="toc-side">
+    <div class="nav-title">Nesta página</div>
+    <a href="/">Início</a>
+    <a href="#artigos">Artigos</a>
+  </aside>
+</div>
+<%- include("partials/footer") %>
