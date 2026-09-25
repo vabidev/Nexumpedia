@@ -189,3 +189,31 @@ label input,label textarea,label select{display:block;margin-top:5px;font-weight
 .category-strip a{display:inline-flex;gap:6px;align-items:center;padding:5px 9px;border:1px solid var(--border);background:var(--surface);color:var(--text);border-radius:2px}
 .category-strip a:hover,.category-strip a.active{text-decoration:none;border-color:var(--brand-2);background:var(--surface-2)}
 .category-strip span{color:var(--muted);font-size:11px}
+
+.reference-editor{border-top:1px solid var(--border);padding-top:18px;margin-top:4px}
+.reference-editor-head{display:flex;justify-content:space-between;align-items:flex-start;gap:20px;margin-bottom:12px}
+.reference-editor-head h2{font-size:24px;margin:0 0 4px;border:0;padding:0}
+.reference-editor-head p{margin:0}
+.reference-row{border:1px solid var(--border);background:var(--surface);padding:12px;margin-bottom:10px}
+.reference-row-head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:10px}
+.reference-fields{display:grid;grid-template-columns:160px minmax(220px,1.3fr) minmax(180px,1fr) minmax(180px,1fr);gap:10px 12px}
+.reference-title-field,.reference-url-field,.reference-note-field{grid-column:span 2}
+.reference-fields input{background:var(--bg)}
+.danger-text{color:#b32424}
+.citation{font-size:.72em;line-height:0;vertical-align:super;margin-left:2px}
+.citation a{text-decoration:none}
+.citation-missing{color:#b32424;font-weight:700}
+.references-section{clear:both;margin-top:30px}
+.references-list{padding-left:28px}
+.references-list li{margin:8px 0;padding-left:4px}
+.references-list cite{font-style:italic}
+.reference-backlink{margin-left:5px;text-decoration:none}
+@media(max-width:1050px){
+  .reference-fields{grid-template-columns:1fr 1fr}
+  .reference-title-field,.reference-url-field,.reference-note-field{grid-column:span 2}
+}
+@media(max-width:620px){
+  .reference-editor-head,.reference-row-head{align-items:flex-start;flex-direction:column}
+  .reference-fields{grid-template-columns:1fr}
+  .reference-title-field,.reference-url-field,.reference-note-field{grid-column:span 1}
+}
