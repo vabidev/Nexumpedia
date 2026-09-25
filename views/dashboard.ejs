@@ -1,0 +1,54 @@
+<%- include("partials/header", { title, showSearch: false }) %>
+<main class="admin-shell">
+  <div class="admin-header">
+    <div>
+      <div class="meta"><%= user.role === "admin" ? "Administrador" : "Colaborador" %> · <%= user.display_name %></div>
+      <h1>Painel editorial</h1>
+    </div>
+    <div class="button-row">
+      <a class="primary" href="/editor">+ Novo artigo</a>
+      <a class="secondary" href="/midia">Mídia</a>
+      <% if (user.role === "admin") { %><a class="secondary" href="/usuarios">Usuários</a><% } %>
+    </div>
+  </div>
+
+  <div class="dashboard">
+    <div class="stat"><span class="meta">Publicados</span><strong><%= stats.published %></strong><span class="badge good">públicos</span></div>
+    <div class="stat"><span class="meta">Em revisão</span><strong><%= stats.review %></strong><span class="badge">aguardando</span></div>
+    <div class="stat"><span class="meta">Rascunhos</span><strong><%= stats.draft %></strong><span class="badge">internos</span></div>
+    <div class="stat"><span class="meta">Arquivados</span><strong><%= stats.archived %></strong><span class="badge">ocultos</span></div>
+  </div>
+
+  <% if (user.role === "collaborator") { %>
+    <div class="notice">Colaboradores podem criar rascunhos e enviá-los para revisão. A publicação final é feita por um administrador.</div>
+  <% } %>
+
+  <h2 class="section-title">Artigos</h2>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Artigo</th><th>Autor</th><th>Estado</th><th>Atualização</th><th>Ações</th></tr></thead>
+      <tbody>
+      <% if (!articles.length) { %>
+        <tr><td colspan="5">Nenhum artigo ainda.</td></tr>
+      <% } else { %>
+        <% for (const article of articles) { %>
+          <tr>
+            <td><strong><%= article.title %></strong><br><span class="meta">/<%= article.slug %></span></td>
+            <td><%= article.author_name %></td>
+            <td><span class="badge <%= article.status === "published" ? "good" : "" %>"><%= statusLabel(article.status) %></span></td>
+            <td><%= formatDate(article.updated_at) %></td>
+            <td class="table-actions">
+              <a href="/artigo/<%= encodeURIComponent(article.slug) %>">Ver</a>
+              <% if (user.role === "admin" || (Number(article.author_id) === Number(user.id) && ["draft","review"].includes(article.status))) { %>
+                · <a href="/editor?id=<%= article.id %>">Editar</a>
+              <% } %>
+              · <a href="/historico/<%= encodeURIComponent(article.slug) %>">Histórico</a>
+            </td>
+          </tr>
+        <% } %>
+      <% } %>
+      </tbody>
+    </table>
+  </div>
+</main>
+<%- include("partials/footer") %>
