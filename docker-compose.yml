@@ -1,0 +1,14 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: nexumpedia
+      POSTGRES_USER: nexumpedia
+      POSTGRES_PASSWORD: nexumpedia
+    ports:
+      - "5432:5432"
+    volumes:
+      - nexumpedia_pg:/var/lib/postgresql/data
+
+volumes:
+  nexumpedia_pg:
