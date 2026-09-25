@@ -5,8 +5,10 @@
   <main class="article">
     <section class="home-hero">
       <div>
-        <h1><%= q ? "Resultados da pesquisa" : "Bem-vindo à Nexumpedia" %></h1>
-        <p><%= q ? 'Resultados para “' + q + '”.' : "Uma enciclopédia digital construída sobre pesquisa, revisão e responsabilidade editorial." %></p>
+        <h1><%= selectedCategory ? "Categoria: " + selectedCategory.name : (q ? "Resultados da pesquisa" : "Bem-vindo à Nexumpedia") %></h1>
+        <p><%= selectedCategory
+          ? (selectedCategory.description || "Artigos publicados nesta categoria.")
+          : (q ? 'Resultados para “' + q + '”.' : "Uma enciclopédia digital construída sobre pesquisa, revisão e responsabilidade editorial.") %></p>
       </div>
       <% if (!q) { %><div class="meta"><%= articles.length %> artigo(s) publicado(s)</div><% } %>
     </section>
@@ -25,6 +27,16 @@
           <a href="/artigo/<%= encodeURIComponent(featured.slug) %>">Ler artigo →</a>
         </div>
       </section>
+    <% } %>
+
+    <% if (categories.length) { %>
+      <nav class="category-strip" aria-label="Categorias">
+        <% for (const category of categories) { %>
+          <a class="<%= selectedCategory?.slug === category.slug ? "active" : "" %>" href="/categoria/<%= encodeURIComponent(category.slug) %>">
+            <%= category.name %> <span><%= category.article_count %></span>
+          </a>
+        <% } %>
+      </nav>
     <% } %>
 
     <section class="card" id="artigos">
