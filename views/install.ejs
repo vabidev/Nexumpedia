@@ -1,0 +1,35 @@
+<%- include("partials/header", { title, showSearch: false }) %>
+<main class="auth-shell">
+  <section class="auth-card">
+    <img class="auth-logo" src="/assets/img/nexumpedia-mark.svg" alt="">
+    <h1>Instalar a Nexumpedia</h1>
+    <p class="muted">Crie a primeira conta. Ela será a administradora do projeto e poderá adicionar os demais colaboradores.</p>
+
+    <% if (errors.length) { %>
+      <div class="form-errors">
+        <% for (const error of errors) { %><div><%= error %></div><% } %>
+      </div>
+    <% } %>
+
+    <form method="post" class="stack-form">
+      <input type="hidden" name="_csrf" value="<%= csrf %>">
+      <label>Usuário
+        <input name="username" required autocomplete="username" value="<%= values.username || "" %>">
+      </label>
+      <label>Nome de exibição
+        <input name="display_name" required value="<%= values.display_name || "" %>">
+      </label>
+      <label>E-mail
+        <input type="email" name="email" required autocomplete="email" value="<%= values.email || "" %>">
+      </label>
+      <label>Senha
+        <input type="password" name="password" required autocomplete="new-password" minlength="10">
+      </label>
+      <label>Confirmar senha
+        <input type="password" name="password_confirm" required autocomplete="new-password" minlength="10">
+      </label>
+      <button class="primary" type="submit">Criar administrador e instalar</button>
+    </form>
+  </section>
+</main>
+<%- include("partials/footer") %>
