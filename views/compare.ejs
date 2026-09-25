@@ -43,21 +43,18 @@
     </div>
   </section>
 
-  <div class="compare-structured">
-    <section class="card">
-      <div class="card-title">Fontes</div>
-      <div class="card-body">
-        <p><strong>#<%= from.version_no %>:</strong> <%= Array.isArray(from.references_snapshot) ? from.references_snapshot.length : 0 %></p>
-        <p><strong>#<%= to.version_no %>:</strong> <%= Array.isArray(to.references_snapshot) ? to.references_snapshot.length : 0 %></p>
-      </div>
-    </section>
-    <section class="card">
-      <div class="card-title">Infobox</div>
-      <div class="card-body">
-        <p><strong>#<%= from.version_no %>:</strong> <%= from.infobox_snapshot && Object.keys(from.infobox_snapshot).length ? "presente" : "não usada" %></p>
-        <p><strong>#<%= to.version_no %>:</strong> <%= to.infobox_snapshot && Object.keys(to.infobox_snapshot).length ? "presente" : "não usada" %></p>
-      </div>
-    </section>
-  </div>
+  <section class="diff-section">
+    <h2>Fontes e referências</h2>
+    <div class="diff-block structured">
+      <% for (const block of referencesDiff) { %><pre class="diff-line <%= block.type %>"><%= block.text %></pre><% } %>
+    </div>
+  </section>
+
+  <section class="diff-section">
+    <h2>Infobox</h2>
+    <div class="diff-block structured">
+      <% for (const block of infoboxDiff) { %><pre class="diff-line <%= block.type %>"><%= block.text %></pre><% } %>
+    </div>
+  </section>
 </main>
 <%- include("partials/footer") %>
