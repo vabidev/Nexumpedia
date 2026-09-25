@@ -34,6 +34,11 @@
       <textarea name="summary" rows="3" maxlength="500" placeholder="Uma descrição curta do artigo."><%= article?.summary || "" %></textarea>
     </label>
 
+    <label>Categorias
+      <input name="categories" maxlength="500" value="<%= categories || "" %>" placeholder="Ex.: Ciência, Tecnologia, História">
+      <span class="field-hint">Separe por vírgulas. Até 8 categorias por artigo.</span>
+    </label>
+
     <div class="editor-grid">
       <label>Conteúdo
         <textarea class="article-editor" name="content" rows="26" required placeholder="Escreva o artigo aqui..."><%= article?.content || "" %></textarea>
