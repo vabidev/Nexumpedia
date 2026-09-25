@@ -51,6 +51,7 @@ export async function migrate() {
       summary VARCHAR(500) NOT NULL DEFAULT '',
       content TEXT NOT NULL DEFAULT '',
       status VARCHAR(20) NOT NULL,
+      categories TEXT NOT NULL DEFAULT '',
       editor_id BIGINT NOT NULL REFERENCES users(id),
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       UNIQUE(article_id, version_no)
@@ -81,11 +82,14 @@ export async function migrate() {
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
 
+    ALTER TABLE article_versions ADD COLUMN IF NOT EXISTS categories TEXT NOT NULL DEFAULT '';
+
     CREATE UNIQUE INDEX IF NOT EXISTS idx_users_username_lower ON users(LOWER(username));
     CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email_lower ON users(LOWER(email));
     CREATE INDEX IF NOT EXISTS idx_articles_status ON articles(status);
     CREATE INDEX IF NOT EXISTS idx_articles_author ON articles(author_id);
     CREATE INDEX IF NOT EXISTS idx_versions_article ON article_versions(article_id, version_no DESC);
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_categories_name_lower ON categories(LOWER(name));
     CREATE INDEX IF NOT EXISTS idx_article_categories_category ON article_categories(category_id);
   `);
 }
@@ -97,7 +101,15 @@ export async function hasUsers() {
 
 export async function saveArticleVersion(client, articleId, editorId) {
   const articleResult = await client.query(
-    "SELECT title, summary, content, status FROM articles WHERE id = $1",
+    `SELECT a.title, a.summary, a.content, a.status,
+            COALESCE((
+              SELECT string_agg(c.name, ', ' ORDER BY c.name)
+              FROM article_categories ac
+              JOIN categories c ON c.id = ac.category_id
+              WHERE ac.article_id = a.id
+            ), '') AS categories
+     FROM articles a
+     WHERE a.id = $1`,
     [articleId],
   );
   const article = articleResult.rows[0];
@@ -110,8 +122,8 @@ export async function saveArticleVersion(client, articleId, editorId) {
 
   await client.query(
     `INSERT INTO article_versions
-      (article_id, version_no, title, summary, content, status, editor_id)
-     VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+      (article_id, version_no, title, summary, content, status, categories, editor_id)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
     [
       articleId,
       versionResult.rows[0].next,
@@ -119,6 +131,7 @@ export async function saveArticleVersion(client, articleId, editorId) {
       article.summary,
       article.content,
       article.status,
+      article.categories,
       editorId,
     ],
   );
@@ -136,27 +149,54 @@ export async function syncArticleCategories(client, articleId, names) {
   await client.query("DELETE FROM article_categories WHERE article_id = $1", [articleId]);
 
   for (const name of clean) {
-    const slug = name
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "")
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/^-+|-+$/g, "")
-      .slice(0, 80) || "categoria";
-
-    const categoryResult = await client.query(
-      `INSERT INTO categories (name, slug)
-       VALUES ($1, $2)
-       ON CONFLICT (slug) DO UPDATE SET name = EXCLUDED.name
-       RETURNING id`,
-      [name, slug],
+    const byName = await client.query(
+      "SELECT id FROM categories WHERE LOWER(name) = LOWER($1) LIMIT 1",
+      [name],
     );
+
+    let categoryId = byName.rows[0]?.id;
+
+    if (!categoryId) {
+      const base = name
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-+|-+$/g, "")
+        .slice(0, 72) || "categoria";
+
+      let slug = base;
+      let suffix = 2;
+
+      while (!categoryId) {
+        try {
+          const categoryResult = await client.query(
+            "INSERT INTO categories (name, slug) VALUES ($1, $2) RETURNING id",
+            [name, slug],
+          );
+          categoryId = categoryResult.rows[0].id;
+        } catch (error) {
+          if (error.code !== "23505") throw error;
+
+          const retryByName = await client.query(
+            "SELECT id FROM categories WHERE LOWER(name) = LOWER($1) LIMIT 1",
+            [name],
+          );
+          if (retryByName.rows[0]) {
+            categoryId = retryByName.rows[0].id;
+            break;
+          }
+
+          slug = `${base.slice(0, 74)}-${suffix++}`;
+        }
+      }
+    }
 
     await client.query(
       `INSERT INTO article_categories (article_id, category_id)
        VALUES ($1, $2)
        ON CONFLICT DO NOTHING`,
-      [articleId, categoryResult.rows[0].id],
+      [articleId, categoryId],
     );
   }
 }
