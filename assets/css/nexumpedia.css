@@ -232,3 +232,45 @@ label input,label textarea,label select{display:block;margin-top:5px;font-weight
   .infobox-field-row{grid-template-columns:1fr}
   .infobox-field-row .link-button{justify-self:start;margin-bottom:0}
 }
+
+.preview-banner,.version-banner{
+  border:1px solid var(--border);border-left:4px solid var(--brand-2);
+  background:var(--surface);padding:10px 12px;margin-bottom:18px
+}
+.preview-banner{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.preview-banner .link-button{margin-left:auto}
+.preview-category{
+  display:inline-block;border-left:1px solid var(--border);padding-left:7px;color:var(--text)
+}
+.compare-picker{
+  display:flex;gap:12px;align-items:end;flex-wrap:wrap;
+  border:1px solid var(--border);background:var(--surface);padding:12px;margin:16px 0
+}
+.compare-picker label{min-width:190px}
+.compare-shell{max-width:1380px;margin:0 auto;padding:28px 30px 60px}
+.diff-legend{display:flex;gap:18px;flex-wrap:wrap;margin:12px 0 22px;color:var(--muted)}
+.diff-legend span{display:inline-flex;gap:6px;align-items:center}
+.diff-chip{display:inline-block;width:14px;height:14px;border:1px solid var(--border)}
+.diff-chip.removed{background:rgba(179,36,36,.16);border-color:rgba(179,36,36,.42)}
+.diff-chip.added{background:rgba(20,134,109,.16);border-color:rgba(20,134,109,.42)}
+.diff-chip.same{background:var(--surface);border-color:var(--border)}
+.diff-section{margin:24px 0}
+.diff-section h2{font-size:23px;margin-bottom:8px}
+.diff-block{border:1px solid var(--border);background:var(--bg);overflow:auto}
+.diff-block.large{max-height:620px}
+.diff-block.structured{max-height:420px}
+.diff-line{
+  margin:0;padding:3px 10px;border-bottom:1px solid var(--border-soft);
+  font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:12px;
+  line-height:1.5;white-space:pre-wrap;word-break:break-word
+}
+.diff-line:last-child{border-bottom:0}
+.diff-line.remove{background:rgba(179,36,36,.10)}
+.diff-line.add{background:rgba(20,134,109,.10)}
+.diff-line.same{color:var(--muted);background:var(--surface)}
+@media(max-width:620px){
+  .preview-banner .link-button{margin-left:0}
+  .compare-shell{padding:20px 16px 45px}
+  .compare-picker{align-items:stretch;flex-direction:column}
+  .compare-picker label{min-width:0}
+}
