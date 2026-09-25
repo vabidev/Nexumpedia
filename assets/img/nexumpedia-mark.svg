@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 160" role="img" aria-labelledby="title desc">
+  <title id="title">Nexumpedia</title>
+  <desc id="desc">Símbolo com a letra N, páginas de livro e linhas de conexão.</desc>
+  <defs>
+    <linearGradient id="g" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#3f6b93"/>
+      <stop offset="1" stop-color="#0b2d4a"/>
+    </linearGradient>
+  </defs>
+  <circle cx="80" cy="71" r="51" fill="none" stroke="url(#g)" stroke-width="5"/>
+  <path d="M31 73c28-15 62-17 98-2M40 45c25 12 54 14 81 5M47 104c23-9 47-8 68 0M80 20c-13 17-20 34-20 52 0 17 6 33 18 49M80 20c14 17 21 34 21 52 0 17-6 33-18 49" fill="none" stroke="#8ca9c4" stroke-width="3" stroke-linecap="round"/>
+  <circle cx="37" cy="70" r="5" fill="#0b2d4a"/>
+  <circle cx="119" cy="49" r="5" fill="#3f6b93"/>
+  <circle cx="104" cy="108" r="5" fill="#0b2d4a"/>
+  <path d="M45 121c16-4 27-1 35 8 8-9 20-12 35-8l-6 17c-12-2-21 1-29 8-8-7-17-10-29-8z" fill="#f7f9fb" stroke="#0b2d4a" stroke-width="4" stroke-linejoin="round"/>
+  <path d="M80 130v16" stroke="#0b2d4a" stroke-width="3"/>
+  <path d="M56 42h18l30 50V42h14v63h-18L70 55v50H56z" fill="#102942"/>
+</svg>
