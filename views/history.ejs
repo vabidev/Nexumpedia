@@ -15,12 +15,32 @@
 
     <p>Cada salvamento cria uma versão independente. Rascunhos e versões em revisão ficam visíveis apenas para usuários com acesso editorial.</p>
 
+    <% if (versions.length >= 2) { %>
+      <form class="compare-picker" method="get" action="/historico/<%= encodeURIComponent(article.slug) %>/comparar">
+        <label>De
+          <select name="from" required>
+            <% for (const version of versions) { %>
+              <option value="<%= version.version_no %>">#<%= version.version_no %> — <%= formatDate(version.created_at) %></option>
+            <% } %>
+          </select>
+        </label>
+        <label>Para
+          <select name="to" required>
+            <% for (let i = 0; i < versions.length; i += 1) { const version = versions[i]; %>
+              <option value="<%= version.version_no %>" <%= i === 0 ? "selected" : "" %>>#<%= version.version_no %> — <%= formatDate(version.created_at) %></option>
+            <% } %>
+          </select>
+        </label>
+        <button class="secondary" type="submit">Comparar versões</button>
+      </form>
+    <% } %>
+
     <div class="table-wrap">
       <table>
-        <thead><tr><th>Versão</th><th>Estado</th><th>Editor</th><th>Data</th><th>Categorias</th><th>Fontes</th><th>Infobox</th><th>Resumo</th></tr></thead>
+        <thead><tr><th>Versão</th><th>Estado</th><th>Editor</th><th>Data</th><th>Categorias</th><th>Fontes</th><th>Infobox</th><th>Resumo</th><th></th></tr></thead>
         <tbody>
           <% if (!versions.length) { %>
-            <tr><td colspan="8">Nenhuma versão disponível.</td></tr>
+            <tr><td colspan="9">Nenhuma versão disponível.</td></tr>
           <% } else { %>
             <% for (const version of versions) { %>
               <tr>
@@ -32,6 +52,7 @@
                 <td><%= Array.isArray(version.references_snapshot) ? version.references_snapshot.length : 0 %></td>
                 <td><%= version.infobox_snapshot && Object.keys(version.infobox_snapshot).length ? "Sim" : "—" %></td>
                 <td><%= version.summary.length > 100 ? version.summary.slice(0,100) + "…" : version.summary %></td>
+                <td><a href="/historico/<%= encodeURIComponent(article.slug) %>/<%= version.version_no %>">Ver versão</a></td>
               </tr>
             <% } %>
           <% } %>
