@@ -62,8 +62,13 @@ export function formatDate(value) {
   }).format(new Date(value));
 }
 
-function inlineMarkup(text) {
+function inlineMarkup(text, referenceIndex = new Map()) {
   let safe = escapeHtml(text);
+  safe = safe.replace(/\[\^([A-Za-z0-9_-]{1,40})\]/g, (_match, key) => {
+    const ref = referenceIndex.get(key.toLowerCase());
+    if (!ref) return '<span class="citation-missing">[?]</span>';
+    return '<sup class="citation"><a href="#ref-' + escapeHtml(ref.citation_key) + '" id="cite-' + escapeHtml(ref.citation_key) + '">[' + ref.number + ']</a></sup>';
+  });
   safe = safe.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
   safe = safe.replace(/(?<!\*)\*([^*]+)\*(?!\*)/g, "<em>$1</em>");
   safe = safe.replace(
@@ -73,7 +78,13 @@ function inlineMarkup(text) {
   return safe;
 }
 
-export function renderMarkup(content = "") {
+export function renderMarkup(content = "", references = []) {
+  const referenceIndex = new Map(
+    references.map((ref, index) => [
+      String(ref.citation_key).toLowerCase(),
+      { ...ref, number: index + 1 },
+    ]),
+  );
   const lines = String(content).trim().split(/\r?\n/);
   const html = [];
   let inList = false;
@@ -100,14 +111,14 @@ export function renderMarkup(content = "") {
     match = line.match(/^###\s+(.+)$/);
     if (match) {
       closeList();
-      html.push(`<h3>${inlineMarkup(match[1])}</h3>`);
+      html.push(`<h3>${inlineMarkup(match[1], referenceIndex)}</h3>`);
       continue;
     }
 
     match = line.match(/^##\s+(.+)$/);
     if (match) {
       closeList();
-      html.push(`<h2 id="${slugify(match[1])}">${inlineMarkup(match[1])}</h2>`);
+      html.push(`<h2 id="${slugify(match[1])}">${inlineMarkup(match[1], referenceIndex)}</h2>`);
       continue;
     }
 
@@ -117,13 +128,13 @@ export function renderMarkup(content = "") {
         html.push("<ul>");
         inList = true;
       }
-      html.push(`<li>${inlineMarkup(match[1])}</li>`);
+      html.push(`<li>${inlineMarkup(match[1], referenceIndex)}</li>`);
       continue;
     }
 
     closeList();
     if (!line.trim()) continue;
-    html.push(`<p>${inlineMarkup(line)}</p>`);
+    html.push(`<p>${inlineMarkup(line, referenceIndex)}</p>`);
   }
 
   closeList();
@@ -135,4 +146,10 @@ export function headingsFromContent(content = "") {
     id: slugify(match[1]),
     title: match[1],
   }));
+}
+
+
+export function citationKeysFromContent(content = "") {
+  return [...String(content).matchAll(/\[\^([A-Za-z0-9_-]{1,40})\]/g)]
+    .map((match) => match[1].toLowerCase());
 }
