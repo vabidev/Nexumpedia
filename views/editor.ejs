@@ -1,0 +1,64 @@
+<%- include("partials/header", { title, showSearch: false }) %>
+<main class="editor-shell">
+  <div class="editor-topline">
+    <div>
+      <div class="meta">Área editorial</div>
+      <h1><%= article?.id ? "Editar artigo" : "Novo artigo" %></h1>
+    </div>
+    <div class="button-row">
+      <a class="secondary" href="/painel">← Painel</a>
+      <% if (article?.slug) { %><a class="secondary" href="/artigo/<%= encodeURIComponent(article.slug) %>">Visualizar</a><% } %>
+    </div>
+  </div>
+
+  <% if (article?.status) { %>
+    <div class="notice">
+      Estado atual: <strong><%= statusLabel(article.status) %></strong>.
+      <% if (user.role !== "admin") { %> A publicação final depende de um administrador.<% } %>
+    </div>
+  <% } %>
+
+  <% if (errors.length) { %>
+    <div class="form-errors"><% for (const error of errors) { %><div><%= error %></div><% } %></div>
+  <% } %>
+
+  <form method="post" class="editor-form">
+    <input type="hidden" name="_csrf" value="<%= csrf %>">
+    <input type="hidden" name="id" value="<%= article?.id || "" %>">
+
+    <label>Título
+      <input name="title" required maxlength="180" value="<%= article?.title || "" %>">
+    </label>
+
+    <label>Resumo
+      <textarea name="summary" rows="3" maxlength="500" placeholder="Uma descrição curta do artigo."><%= article?.summary || "" %></textarea>
+    </label>
+
+    <div class="editor-grid">
+      <label>Conteúdo
+        <textarea class="article-editor" name="content" rows="26" required placeholder="Escreva o artigo aqui..."><%= article?.content || "" %></textarea>
+      </label>
+
+      <aside class="editor-help">
+        <h3>Formatação</h3>
+        <code>## Seção</code>
+        <code>### Subseção</code>
+        <code>**negrito**</code>
+        <code>*itálico*</code>
+        <code>- item de lista</code>
+        <code>[fonte](https://...)</code>
+        <p>Imagens enviadas na <a href="/midia" target="_blank">biblioteca de mídia</a> fornecem um código pronto para colar no artigo.</p>
+      </aside>
+    </div>
+
+    <div class="editor-actions">
+      <button class="secondary" type="submit" name="action" value="save">Salvar rascunho</button>
+      <button class="secondary" type="submit" name="action" value="review">Enviar para revisão</button>
+      <% if (user.role === "admin") { %>
+        <button class="primary" type="submit" name="action" value="publish">Publicar</button>
+        <% if (article?.id) { %><button class="danger" type="submit" name="action" value="archive">Arquivar</button><% } %>
+      <% } %>
+    </div>
+  </form>
+</main>
+<%- include("partials/footer") %>
