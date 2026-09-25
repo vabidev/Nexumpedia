@@ -155,3 +155,105 @@ export function citationKeysFromContent(content = "") {
   return [...String(content).matchAll(/\[\^([A-Za-z0-9_-]{1,40})\]/g)]
     .map((match) => match[1].toLowerCase());
 }
+
+
+export function diffLines(before = "", after = "") {
+  const left = String(before).split(/\r?\n/);
+  const right = String(after).split(/\r?\n/);
+
+  const maxCells = 120000;
+  if (left.length * right.length > maxCells) {
+    if (before === after) return [{ type: "same", text: String(before) }];
+    return [
+      { type: "remove", text: String(before) },
+      { type: "add", text: String(after) },
+    ];
+  }
+
+  const dp = Array.from({ length: left.length + 1 }, () =>
+    new Uint16Array(right.length + 1)
+  );
+
+  for (let i = left.length - 1; i >= 0; i -= 1) {
+    for (let j = right.length - 1; j >= 0; j -= 1) {
+      dp[i][j] = left[i] === right[j]
+        ? dp[i + 1][j + 1] + 1
+        : Math.max(dp[i + 1][j], dp[i][j + 1]);
+    }
+  }
+
+  const result = [];
+  let i = 0;
+  let j = 0;
+
+  const push = (type, text) => {
+    const previous = result[result.length - 1];
+    if (previous?.type === type) {
+      previous.text += "\n" + text;
+    } else {
+      result.push({ type, text });
+    }
+  };
+
+  while (i < left.length && j < right.length) {
+    if (left[i] === right[j]) {
+      push("same", left[i]);
+      i += 1;
+      j += 1;
+    } else if (dp[i + 1][j] >= dp[i][j + 1]) {
+      push("remove", left[i]);
+      i += 1;
+    } else {
+      push("add", right[j]);
+      j += 1;
+    }
+  }
+
+  while (i < left.length) push("remove", left[i++]);
+  while (j < right.length) push("add", right[j++]);
+
+  return result;
+}
+
+export function normalizeSnapshotReferences(value) {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((ref) => ({
+      citation_key: String(ref?.citation_key || "").trim(),
+      title: String(ref?.title || "").trim(),
+      author: String(ref?.author || "").trim(),
+      publisher: String(ref?.publisher || "").trim(),
+      url: String(ref?.url || "").trim(),
+      published_date: ref?.published_date ? String(ref.published_date).slice(0, 10) : "",
+      accessed_date: ref?.accessed_date ? String(ref.accessed_date).slice(0, 10) : "",
+      note: String(ref?.note || "").trim(),
+    }))
+    .filter((ref) => ref.citation_key && ref.title)
+    .slice(0, 50);
+}
+
+export function normalizeSnapshotInfobox(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+
+  const fields = Array.isArray(value.fields)
+    ? value.fields
+      .map((field) => ({
+        label: String(field?.label || "").trim(),
+        value: String(field?.value || "").trim(),
+      }))
+      .filter((field) => field.label && field.value)
+      .slice(0, 20)
+    : [];
+
+  const mediaId = Number(value.media_id || 0);
+  const infobox = {
+    title: String(value.title || "").trim().slice(0, 160),
+    media_id: Number.isInteger(mediaId) && mediaId > 0 ? mediaId : null,
+    caption: String(value.caption || "").trim().slice(0, 240),
+    fields,
+  };
+
+  return infobox.title || infobox.media_id || infobox.caption || infobox.fields.length
+    ? infobox
+    : null;
+}
