@@ -217,3 +217,18 @@ label input,label textarea,label select{display:block;margin-top:5px;font-weight
   .reference-fields{grid-template-columns:1fr}
   .reference-title-field,.reference-url-field,.reference-note-field{grid-column:span 1}
 }
+
+.infobox-editor{border-top:1px solid var(--border);padding-top:18px}
+.infobox-editor-meta{display:grid;grid-template-columns:1.1fr 1fr 1.4fr;gap:12px;margin-bottom:12px}
+.infobox-fields-editor{display:grid;gap:8px}
+.infobox-field-row{display:grid;grid-template-columns:minmax(160px,.7fr) minmax(220px,1.3fr) auto;gap:10px;align-items:end;border:1px solid var(--border);background:var(--surface);padding:10px}
+.infobox-field-row .link-button{margin-bottom:9px}
+.infobox-media img{display:block;max-width:100%;height:auto;margin:0 auto}
+.infobox-caption{font-size:12px;color:var(--muted);margin-top:6px;line-height:1.4}
+@media(max-width:900px){
+  .infobox-editor-meta{grid-template-columns:1fr}
+}
+@media(max-width:620px){
+  .infobox-field-row{grid-template-columns:1fr}
+  .infobox-field-row .link-button{justify-self:start;margin-bottom:0}
+}
