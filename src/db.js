@@ -111,6 +111,8 @@ export async function migrate() {
     CREATE UNIQUE INDEX IF NOT EXISTS idx_categories_name_lower ON categories(LOWER(name));
     CREATE INDEX IF NOT EXISTS idx_article_categories_category ON article_categories(category_id);
     CREATE INDEX IF NOT EXISTS idx_article_references_article ON article_references(article_id, position, id);
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_article_references_key_lower
+      ON article_references(article_id, LOWER(citation_key));
   `);
 }
 
@@ -281,7 +283,9 @@ export async function syncArticleReferences(client, articleId, references) {
 export async function getArticleReferences(articleId) {
   const { rows } = await pool.query(
     `SELECT id, citation_key, title, author, publisher, url,
-            published_date, accessed_date, note, position
+            TO_CHAR(published_date, 'YYYY-MM-DD') AS published_date,
+            TO_CHAR(accessed_date, 'YYYY-MM-DD') AS accessed_date,
+            note, position
      FROM article_references
      WHERE article_id = $1
      ORDER BY position ASC, id ASC`,
