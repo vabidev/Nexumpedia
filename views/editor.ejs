@@ -39,6 +39,61 @@
       <span class="field-hint">Separe por vírgulas. Até 8 categorias por artigo.</span>
     </label>
 
+    <section class="infobox-editor">
+      <div class="reference-editor-head">
+        <div>
+          <h2>Infobox</h2>
+          <p class="meta">Opcional. Use para resumir dados importantes ao lado do artigo.</p>
+        </div>
+        <button class="secondary" type="button" data-add-infobox-field>+ Adicionar campo</button>
+      </div>
+
+      <div class="infobox-editor-meta">
+        <label>Título da infobox
+          <input name="infobox_title" maxlength="160" value="<%= infobox?.title || "" %>" placeholder="<%= article?.title || "Título da infobox" %>">
+        </label>
+        <label>Imagem
+          <select name="infobox_media_id">
+            <option value="">Sem imagem</option>
+            <% for (const item of media || []) { %>
+              <option value="<%= item.id %>" <%= Number(infobox?.media_id) === Number(item.id) ? "selected" : "" %>>
+                <%= item.alt_text || item.original_name %>
+              </option>
+            <% } %>
+          </select>
+        </label>
+        <label class="infobox-caption-field">Legenda
+          <input name="infobox_caption" maxlength="240" value="<%= infobox?.caption || "" %>" placeholder="Legenda opcional da imagem">
+        </label>
+      </div>
+
+      <div class="infobox-fields-editor" data-infobox-field-list>
+        <% for (const field of infobox?.fields || []) { %>
+          <div class="infobox-field-row" data-infobox-field-row>
+            <label>Campo
+              <input name="infobox_label" maxlength="80" required value="<%= field.label || "" %>" placeholder="Ex.: Fundação">
+            </label>
+            <label>Valor
+              <input name="infobox_value" maxlength="500" required value="<%= field.value || "" %>" placeholder="Ex.: 2026">
+            </label>
+            <button class="link-button danger-text" type="button" data-remove-infobox-field>Remover</button>
+          </div>
+        <% } %>
+      </div>
+
+      <template id="infobox-field-template">
+        <div class="infobox-field-row" data-infobox-field-row>
+          <label>Campo
+            <input name="infobox_label" maxlength="80" required placeholder="Ex.: Fundação">
+          </label>
+          <label>Valor
+            <input name="infobox_value" maxlength="500" required placeholder="Ex.: 2026">
+          </label>
+          <button class="link-button danger-text" type="button" data-remove-infobox-field>Remover</button>
+        </div>
+      </template>
+    </section>
+
     <div class="editor-grid">
       <label>Conteúdo
         <textarea class="article-editor" name="content" rows="26" required placeholder="Escreva o artigo aqui..."><%= article?.content || "" %></textarea>
