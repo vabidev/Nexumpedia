@@ -270,6 +270,7 @@ A Nexumpedia possui nome, marca e identidade visual próprios, preservando uma i
       ["Enciclopédia digital de conteúdo editorial revisado.", content, adminId],
     );
 
+    await syncArticleCategories(client, articleResult.rows[0].id, ["Nexumpedia"]);
     await saveArticleVersion(client, articleResult.rows[0].id, adminId);
     await client.query("COMMIT");
 
@@ -421,7 +422,13 @@ app.get("/painel", requireLogin, async (req, res, next) => {
     for (const row of statsResult.rows) stats[row.status] = row.total;
 
     const articlesResult = await pool.query(
-      `SELECT a.*, u.display_name AS author_name
+      `SELECT a.*, u.display_name AS author_name,
+              COALESCE((
+                SELECT string_agg(c.name, ', ' ORDER BY c.name)
+                FROM article_categories ac
+                JOIN categories c ON c.id = ac.category_id
+                WHERE ac.article_id = a.id
+              ), '') AS categories
        FROM articles a
        JOIN users u ON u.id = a.author_id
        WHERE ${where}
