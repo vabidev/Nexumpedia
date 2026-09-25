@@ -17,10 +17,10 @@
 
     <div class="table-wrap">
       <table>
-        <thead><tr><th>Versão</th><th>Estado</th><th>Editor</th><th>Data</th><th>Categorias</th><th>Fontes</th><th>Resumo</th></tr></thead>
+        <thead><tr><th>Versão</th><th>Estado</th><th>Editor</th><th>Data</th><th>Categorias</th><th>Fontes</th><th>Infobox</th><th>Resumo</th></tr></thead>
         <tbody>
           <% if (!versions.length) { %>
-            <tr><td colspan="7">Nenhuma versão disponível.</td></tr>
+            <tr><td colspan="8">Nenhuma versão disponível.</td></tr>
           <% } else { %>
             <% for (const version of versions) { %>
               <tr>
@@ -30,6 +30,7 @@
                 <td><%= formatDate(version.created_at) %></td>
                 <td><%= version.categories || "—" %></td>
                 <td><%= Array.isArray(version.references_snapshot) ? version.references_snapshot.length : 0 %></td>
+                <td><%= version.infobox_snapshot && Object.keys(version.infobox_snapshot).length ? "Sim" : "—" %></td>
                 <td><%= version.summary.length > 100 ? version.summary.slice(0,100) + "…" : version.summary %></td>
               </tr>
             <% } %>
