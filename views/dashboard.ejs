@@ -33,7 +33,11 @@
       <% } else { %>
         <% for (const article of articles) { %>
           <tr>
-            <td><strong><%= article.title %></strong><br><span class="meta">/<%= article.slug %></span></td>
+            <td>
+              <strong><%= article.title %></strong><br>
+              <span class="meta">/<%= article.slug %></span>
+              <% if (article.categories) { %><br><span class="meta"><%= article.categories %></span><% } %>
+            </td>
             <td><%= article.author_name %></td>
             <td><span class="badge <%= article.status === "published" ? "good" : "" %>"><%= statusLabel(article.status) %></span></td>
             <td><%= formatDate(article.updated_at) %></td>
