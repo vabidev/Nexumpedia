@@ -872,6 +872,14 @@ app.get("/historico/:slug/comparar", async (req, res, next) => {
       summaryDiff: diffLines(from.summary, to.summary),
       contentDiff: diffLines(from.content, to.content),
       categoriesDiff: diffLines(from.categories, to.categories),
+      referencesDiff: diffLines(
+        JSON.stringify(normalizeSnapshotReferences(from.references_snapshot), null, 2),
+        JSON.stringify(normalizeSnapshotReferences(to.references_snapshot), null, 2),
+      ),
+      infoboxDiff: diffLines(
+        JSON.stringify(normalizeSnapshotInfobox(from.infobox_snapshot) || {}, null, 2),
+        JSON.stringify(normalizeSnapshotInfobox(to.infobox_snapshot) || {}, null, 2),
+      ),
     });
   } catch (error) {
     next(error);
