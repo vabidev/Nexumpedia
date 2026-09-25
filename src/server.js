@@ -35,8 +35,14 @@ await migrate();
 
 const app = express();
 const PgSession = connectPgSimple(session);
+const production = process.env.NODE_ENV === "production";
+const sessionSecret = process.env.SESSION_SECRET || (production ? "" : "nexumpedia-local-development-only");
 
-if (process.env.NODE_ENV === "production") {
+if (production && sessionSecret.length < 32) {
+  throw new Error("SESSION_SECRET precisa ter pelo menos 32 caracteres em produção.");
+}
+
+if (production) {
   app.set("trust proxy", 1);
 }
 
@@ -57,14 +63,14 @@ app.use(session({
     tableName: "user_sessions",
     createTableIfMissing: true,
   }),
-  secret: process.env.SESSION_SECRET || "troque-esta-chave-em-producao",
+  secret: sessionSecret,
   resave: false,
   saveUninitialized: false,
   rolling: true,
   cookie: {
     httpOnly: true,
     sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
+    secure: production,
     maxAge: 1000 * 60 * 60 * 12,
   },
 }));
