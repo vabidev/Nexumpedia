@@ -1,0 +1,10 @@
+.DS_Store
+Thumbs.db
+.env
+.env.*
+node_modules/
+vendor/
+dist/
+build/
+coverage/
+*.log
