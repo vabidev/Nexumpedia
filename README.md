@@ -33,6 +33,10 @@ A aplicação não depende do disco do servidor para guardar banco ou mídia. Is
 - imagem opcional da biblioteca de mídia nas infoboxes;
 - até 20 pares campo/valor por infobox;
 - infobox preservada no histórico de versões;
+- pré-visualização completa sem salvar;
+- visualização individual de versões históricas;
+- comparação textual e estruturada entre versões;
+- restauração de versão como uma nova revisão;
 - instalação do primeiro administrador;
 - login e sessões;
 - papéis de **administrador** e **colaborador**;
@@ -101,7 +105,7 @@ Em produção, `SESSION_SECRET` precisa ter pelo menos 32 caracteres.
 
 ## Versão atual
 
-**0.5.0** — infoboxes configuráveis implementadas de ponta a ponta, com validação real das migrações PostgreSQL no CI.
+**0.6.0** — pré-visualização editorial, comparação e restauração segura de versões implementadas.
 
 ## Infoboxes
 
@@ -115,6 +119,20 @@ O editor permite adicionar uma infobox opcional a qualquer artigo. Ela pode cont
 A infobox é genérica, então pode ser usada em artigos sobre pessoas, países, softwares, empresas, eventos e outros temas sem exigir um tipo específico de formulário.
 
 Cada versão salva guarda um snapshot da infobox daquele momento.
+
+## Pré-visualização e histórico
+
+O editor possui uma pré-visualização completa que abre sem gravar alterações. Ela renderiza o conteúdo enviado pelo formulário com infobox, categorias, imagens, citações e referências.
+
+O histórico permite:
+
+- abrir qualquer versão disponível à conta atual;
+- comparar duas versões;
+- visualizar diferenças de título, resumo, conteúdo e categorias;
+- comparar também snapshots de fontes e infobox;
+- restaurar uma versão antiga como uma **nova versão**, sem apagar o histórico anterior.
+
+A restauração preserva o estado editorial atual do artigo. Em um artigo publicado, um administrador deve considerar que a restauração altera o conteúdo atual imediatamente.
 
 ## Fluxo editorial
 
@@ -169,6 +187,7 @@ A biblioteca de mídia gera o código da imagem automaticamente.
 - `assets/` — CSS, JavaScript e marca;
 - `scripts/check-views.js` — validação dos templates;
 - `scripts/check-citations.js` — testes do renderizador de citações;
+- `scripts/check-history.js` — testes de diff e snapshots históricos;
 - `scripts/check-db.js` — sobe o schema e valida as migrações PostgreSQL no CI;
 - `docker-compose.yml` — PostgreSQL para desenvolvimento local.
 
