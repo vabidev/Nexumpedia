@@ -72,6 +72,27 @@
     });
   }
 
+  const infoboxList = document.querySelector("[data-infobox-field-list]");
+  const infoboxTemplate = document.querySelector("#infobox-field-template");
+
+  function bindInfoboxField(row) {
+    row.querySelector("[data-remove-infobox-field]")?.addEventListener("click", () => row.remove());
+  }
+
+  if (infoboxList) {
+    infoboxList.querySelectorAll("[data-infobox-field-row]").forEach(bindInfoboxField);
+
+    document.querySelector("[data-add-infobox-field]")?.addEventListener("click", () => {
+      if (!infoboxTemplate?.content) return;
+      if (infoboxList.querySelectorAll("[data-infobox-field-row]").length >= 20) return;
+
+      const row = infoboxTemplate.content.firstElementChild.cloneNode(true);
+      infoboxList.appendChild(row);
+      bindInfoboxField(row);
+      row.querySelector("input")?.focus();
+    });
+  }
+
   const headings = [...document.querySelectorAll(".article h2[id], .article h3[id]")];
   const tocLinks = [...document.querySelectorAll(".toc-side a")];
   if (headings.length && tocLinks.length && "IntersectionObserver" in window) {
