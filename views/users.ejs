@@ -1,0 +1,65 @@
+<%- include("partials/header", { title, showSearch: false }) %>
+<main class="admin-shell">
+  <div class="admin-header">
+    <div><div class="meta">Administração</div><h1>Usuários</h1></div>
+    <a class="secondary" href="/painel">← Painel</a>
+  </div>
+
+  <% if (errors.length) { %>
+    <div class="form-errors"><% for (const error of errors) { %><div><%= error %></div><% } %></div>
+  <% } %>
+
+  <div class="settings-grid">
+    <section class="card">
+      <div class="card-title">Adicionar colaborador</div>
+      <div class="card-body">
+        <form method="post" class="stack-form">
+          <input type="hidden" name="_csrf" value="<%= csrf %>">
+          <input type="hidden" name="action" value="create">
+          <label>Usuário<input name="username" required value="<%= values.username || "" %>"></label>
+          <label>Nome de exibição<input name="display_name" required value="<%= values.display_name || "" %>"></label>
+          <label>E-mail<input type="email" name="email" required value="<%= values.email || "" %>"></label>
+          <label>Senha inicial<input type="password" name="password" minlength="10" required></label>
+          <label>Papel
+            <select name="role">
+              <option value="collaborator" <%= values.role === "admin" ? "" : "selected" %>>Colaborador</option>
+              <option value="admin" <%= values.role === "admin" ? "selected" : "" %>>Administrador</option>
+            </select>
+          </label>
+          <button class="primary">Criar conta</button>
+        </form>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="card-title">Contas cadastradas</div>
+      <div class="card-body no-pad">
+        <div class="table-wrap borderless">
+          <table>
+            <thead><tr><th>Nome</th><th>Papel</th><th>Estado</th><th></th></tr></thead>
+            <tbody>
+              <% for (const account of users) { %>
+                <tr>
+                  <td><strong><%= account.display_name %></strong><br><span class="meta">@<%= account.username %> · <%= account.email %></span></td>
+                  <td><%= account.role === "admin" ? "Administrador" : "Colaborador" %></td>
+                  <td><span class="badge <%= account.active ? "good" : "" %>"><%= account.active ? "Ativo" : "Desativado" %></span></td>
+                  <td>
+                    <% if (Number(account.id) !== Number(user.id)) { %>
+                      <form method="post" class="inline-form">
+                        <input type="hidden" name="_csrf" value="<%= csrf %>">
+                        <input type="hidden" name="action" value="toggle">
+                        <input type="hidden" name="user_id" value="<%= account.id %>">
+                        <button class="link-button"><%= account.active ? "Desativar" : "Ativar" %></button>
+                      </form>
+                    <% } %>
+                  </td>
+                </tr>
+              <% } %>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </div>
+</main>
+<%- include("partials/footer") %>
