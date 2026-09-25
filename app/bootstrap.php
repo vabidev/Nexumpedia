@@ -252,7 +252,12 @@ function status_label(string $status): string
 
 function can_edit_article(array $article, array $user): bool
 {
-    return $user['role'] === 'admin' || (int)$article['author_id'] === (int)$user['id'];
+    if ($user['role'] === 'admin') {
+        return true;
+    }
+
+    return (int)$article['author_id'] === (int)$user['id']
+        && in_array($article['status'], ['draft', 'review'], true);
 }
 
 function save_article_version(int $articleId, int $editorId): void
