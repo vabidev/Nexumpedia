@@ -1,0 +1,96 @@
+<%- include("partials/header", { title }) %>
+<div class="page">
+  <%- include("partials/sidebar") %>
+
+  <main class="article">
+    <div class="version-banner">
+      <strong>Versão histórica #<%= version.version_no %>.</strong>
+      Salva por <%= version.editor_name %> em <%= formatDate(version.created_at) %>.
+      Estado naquele momento: <%= statusLabel(version.status) %>.
+    </div>
+
+    <header class="article-header">
+      <div class="article-kicker">Histórico da Nexumpedia.</div>
+      <h1><%= version.title %></h1>
+      <div class="article-tabs">
+        <div class="tabs">
+          <a class="tab" href="/artigo/<%= encodeURIComponent(article.slug) %>">Artigo atual</a>
+          <a class="tab active" href="/historico/<%= encodeURIComponent(article.slug) %>">Histórico</a>
+        </div>
+        <div class="article-tools">
+          <% if (canRestore) { %>
+            <form method="post" action="/historico/<%= encodeURIComponent(article.slug) %>/<%= version.version_no %>/restaurar" class="inline-form" onsubmit="return confirm('Restaurar esta versão como uma nova versão do artigo?');">
+              <input type="hidden" name="_csrf" value="<%= csrf %>">
+              <button class="link-button danger-text" type="submit">Restaurar esta versão</button>
+            </form>
+          <% } %>
+        </div>
+      </div>
+    </header>
+
+    <% if (infobox) { %>
+      <aside class="infobox">
+        <div class="infobox-title"><%= infobox.title || version.title %></div>
+        <% if (infobox.media_id) { %>
+          <div class="infobox-media">
+            <img src="/media/<%= infobox.media_id %>" alt="<%= infobox.media_alt || infobox.caption || infobox.media_name || version.title %>">
+            <% if (infobox.caption) { %><div class="infobox-caption"><%= infobox.caption %></div><% } %>
+          </div>
+        <% } %>
+        <% if (infobox.fields.length) { %>
+          <dl>
+            <% for (const field of infobox.fields) { %><dt><%= field.label %></dt><dd><%= field.value %></dd><% } %>
+          </dl>
+        <% } %>
+      </aside>
+    <% } %>
+
+    <% if (version.summary) { %><p class="lead"><%= version.summary %></p><% } %>
+
+    <% if (headings.length || references.length) { %>
+      <nav class="inline-toc" aria-label="Índice">
+        <strong>Índice</strong>
+        <ol>
+          <% for (const heading of headings) { %><li><a href="#<%= heading.id %>"><%= heading.title %></a></li><% } %>
+          <% if (references.length) { %><li><a href="#referencias">Referências</a></li><% } %>
+        </ol>
+      </nav>
+    <% } %>
+
+    <div class="article-content"><%- renderedContent %></div>
+
+    <% if (references.length) { %>
+      <section class="references-section">
+        <h2 id="referencias">Referências</h2>
+        <ol class="references-list">
+          <% for (const ref of references) { %>
+            <li id="ref-<%= ref.citation_key %>">
+              <% if (ref.author) { %><span class="reference-author"><%= ref.author %>.</span> <% } %>
+              <% if (ref.url) { %><a href="<%= ref.url %>" rel="noopener noreferrer"><cite><%= ref.title %></cite></a>.<% } else { %><cite><%= ref.title %></cite>.<% } %>
+              <% if (ref.publisher) { %> <%= ref.publisher %>.<% } %>
+              <% if (ref.published_date) { %> <%= ref.published_date %>.<% } %>
+              <% if (ref.note) { %> <%= ref.note %>.<% } %>
+              <% if (ref.accessed_date) { %> Acesso em <%= ref.accessed_date %>.<% } %>
+            </li>
+          <% } %>
+        </ol>
+      </section>
+    <% } %>
+
+    <% if (categories.length) { %>
+      <nav class="article-categories" aria-label="Categorias históricas">
+        <span>Categorias:</span>
+        <% for (const category of categories) { %><span class="preview-category"><%= category %></span><% } %>
+      </nav>
+    <% } %>
+
+    <footer class="footer">Esta é uma versão histórica e não representa necessariamente o conteúdo atual do artigo.</footer>
+  </main>
+
+  <aside class="toc-side">
+    <div class="nav-title">Versão #<%= version.version_no %></div>
+    <a href="/historico/<%= encodeURIComponent(article.slug) %>">Voltar ao histórico</a>
+    <% for (const heading of headings) { %><a href="#<%= heading.id %>"><%= heading.title %></a><% } %>
+  </aside>
+</div>
+<%- include("partials/footer") %>
