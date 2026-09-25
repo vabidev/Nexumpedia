@@ -16,12 +16,15 @@ import {
   saveArticleVersion,
   syncArticleCategories,
   getArticleCategories,
+  syncArticleReferences,
+  getArticleReferences,
 } from "./db.js";
 import {
   canEditArticle,
   formatDate,
   headingsFromContent,
   renderMarkup,
+  citationKeysFromContent,
   statusLabel,
   uniqueSlug,
 } from "./helpers.js";
@@ -96,6 +99,102 @@ function parseCategories(value = "") {
       .map((name) => name.trim().replace(/\s+/g, " "))
       .filter(Boolean),
   )].slice(0, 8);
+}
+
+function formArray(value) {
+  if (Array.isArray(value)) return value;
+  if (value === undefined || value === null) return [];
+  return [value];
+}
+
+function parseReferences(body) {
+  const keys = formArray(body.ref_key);
+  const titles = formArray(body.ref_title);
+  const authors = formArray(body.ref_author);
+  const publishers = formArray(body.ref_publisher);
+  const urls = formArray(body.ref_url);
+  const publishedDates = formArray(body.ref_published_date);
+  const accessedDates = formArray(body.ref_accessed_date);
+  const notes = formArray(body.ref_note);
+  const count = Math.min(
+    Math.max(
+      keys.length,
+      titles.length,
+      authors.length,
+      publishers.length,
+      urls.length,
+      publishedDates.length,
+      accessedDates.length,
+      notes.length,
+    ),
+    50,
+  );
+
+  const references = [];
+  for (let index = 0; index < count; index += 1) {
+    const ref = {
+      citation_key: String(keys[index] || "").trim(),
+      title: String(titles[index] || "").trim(),
+      author: String(authors[index] || "").trim(),
+      publisher: String(publishers[index] || "").trim(),
+      url: String(urls[index] || "").trim(),
+      published_date: String(publishedDates[index] || "").trim(),
+      accessed_date: String(accessedDates[index] || "").trim(),
+      note: String(notes[index] || "").trim(),
+    };
+
+    if (Object.values(ref).every((value) => value === "")) continue;
+    references.push(ref);
+  }
+
+  return references;
+}
+
+function validateReferences(references, content) {
+  const errors = [];
+  const seen = new Set();
+
+  for (const ref of references) {
+    const normalizedKey = ref.citation_key.toLowerCase();
+
+    if (!/^[A-Za-z0-9_-]{1,40}$/.test(ref.citation_key)) {
+      errors.push("A chave de cada referência deve usar apenas letras, números, hífen ou sublinhado.");
+    }
+    if (seen.has(normalizedKey)) {
+      errors.push(`A chave de referência “${ref.citation_key}” está duplicada.`);
+    }
+    seen.add(normalizedKey);
+
+    if (ref.title.length < 2 || ref.title.length > 240) {
+      errors.push(`A referência “${ref.citation_key || "sem chave"}” precisa de um título válido.`);
+    }
+    if (ref.author.length > 160 || ref.publisher.length > 160 || ref.note.length > 300) {
+      errors.push(`A referência “${ref.citation_key || "sem chave"}” possui um campo longo demais.`);
+    }
+    if (ref.url) {
+      try {
+        const parsed = new URL(ref.url);
+        if (!["http:", "https:"].includes(parsed.protocol)) throw new Error("protocol");
+      } catch {
+        errors.push(`A URL da referência “${ref.citation_key || "sem chave"}” é inválida.`);
+      }
+    }
+    for (const [label, date] of [["publicação", ref.published_date], ["acesso", ref.accessed_date]]) {
+      if (date && !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+        errors.push(`A data de ${label} da referência “${ref.citation_key || "sem chave"}” é inválida.`);
+      }
+    }
+  }
+
+  const available = new Set(references.map((ref) => ref.citation_key.toLowerCase()));
+  const missing = [...new Set(citationKeysFromContent(content))]
+    .filter((key) => !available.has(key));
+
+  if (missing.length) {
+    errors.push(`Citação sem fonte cadastrada: ${missing.map((key) => "[^" + key + "]").join(", ")}.`);
+  }
+
+  return errors;
 }
 
 const upload = multer({
@@ -372,13 +471,15 @@ app.get("/artigo/:slug", async (req, res, next) => {
     if (!visible) return res.status(404).render("404", { title: "Artigo não encontrado" });
 
     const categories = await getArticleCategories(article.id);
+    const references = await getArticleReferences(article.id);
 
     res.render("article", {
       title: article.title,
       article,
       categories,
+      references,
       headings: headingsFromContent(article.content),
-      renderedContent: renderMarkup(article.content),
+      renderedContent: renderMarkup(article.content, references),
       editable: canEditArticle(article, req.user),
     });
   } catch (error) {
@@ -462,11 +563,13 @@ app.get("/editor", requireLogin, async (req, res, next) => {
     const categories = article
       ? (await getArticleCategories(article.id)).map((category) => category.name).join(", ")
       : "";
+    const references = article ? await getArticleReferences(article.id) : [];
 
     res.render("editor", {
       title: article ? "Editar artigo" : "Novo artigo",
       article,
       categories,
+      references,
       errors: [],
     });
   } catch (error) {
@@ -481,6 +584,7 @@ app.post("/editor", requireLogin, requireCsrf, async (req, res, next) => {
   const content = String(req.body.content || "").trim();
   const categoryNames = parseCategories(req.body.categories);
   const categories = categoryNames.join(", ");
+  const references = parseReferences(req.body);
   const action = String(req.body.action || "save");
   const errors = [];
 
@@ -494,6 +598,7 @@ app.post("/editor", requireLogin, requireCsrf, async (req, res, next) => {
   if (categoryNames.some((name) => name.length < 2 || name.length > 60)) {
     errors.push("Cada categoria deve ter entre 2 e 60 caracteres.");
   }
+  errors.push(...validateReferences(references, content));
   if (!allowedActions.includes(action)) errors.push("Ação editorial inválida.");
 
   let article = null;
@@ -509,6 +614,7 @@ app.post("/editor", requireLogin, requireCsrf, async (req, res, next) => {
       title: article ? "Editar artigo" : "Novo artigo",
       article: { ...(article || {}), id, title, summary, content },
       categories,
+      references,
       errors,
     });
   }
@@ -555,6 +661,7 @@ app.post("/editor", requireLogin, requireCsrf, async (req, res, next) => {
     }
 
     await syncArticleCategories(client, articleId, categoryNames);
+    await syncArticleReferences(client, articleId, references);
     await saveArticleVersion(client, articleId, req.user.id);
     await client.query("COMMIT");
 
