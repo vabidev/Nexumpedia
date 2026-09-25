@@ -52,6 +52,7 @@ export async function migrate() {
       content TEXT NOT NULL DEFAULT '',
       status VARCHAR(20) NOT NULL,
       categories TEXT NOT NULL DEFAULT '',
+      references_snapshot JSONB NOT NULL DEFAULT '[]'::jsonb,
       editor_id BIGINT NOT NULL REFERENCES users(id),
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       UNIQUE(article_id, version_no)
@@ -71,6 +72,23 @@ export async function migrate() {
       PRIMARY KEY(article_id, category_id)
     );
 
+    CREATE TABLE IF NOT EXISTS article_references (
+      id BIGSERIAL PRIMARY KEY,
+      article_id BIGINT NOT NULL REFERENCES articles(id) ON DELETE CASCADE,
+      citation_key VARCHAR(40) NOT NULL,
+      title VARCHAR(240) NOT NULL,
+      author VARCHAR(160) NOT NULL DEFAULT '',
+      publisher VARCHAR(160) NOT NULL DEFAULT '',
+      url TEXT NOT NULL DEFAULT '',
+      published_date DATE,
+      accessed_date DATE,
+      note VARCHAR(300) NOT NULL DEFAULT '',
+      position INTEGER NOT NULL DEFAULT 0,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      UNIQUE(article_id, citation_key)
+    );
+
     CREATE TABLE IF NOT EXISTS media (
       id BIGSERIAL PRIMARY KEY,
       original_name TEXT NOT NULL,
@@ -83,6 +101,7 @@ export async function migrate() {
     );
 
     ALTER TABLE article_versions ADD COLUMN IF NOT EXISTS categories TEXT NOT NULL DEFAULT '';
+    ALTER TABLE article_versions ADD COLUMN IF NOT EXISTS references_snapshot JSONB NOT NULL DEFAULT '[]'::jsonb;
 
     CREATE UNIQUE INDEX IF NOT EXISTS idx_users_username_lower ON users(LOWER(username));
     CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email_lower ON users(LOWER(email));
@@ -91,6 +110,7 @@ export async function migrate() {
     CREATE INDEX IF NOT EXISTS idx_versions_article ON article_versions(article_id, version_no DESC);
     CREATE UNIQUE INDEX IF NOT EXISTS idx_categories_name_lower ON categories(LOWER(name));
     CREATE INDEX IF NOT EXISTS idx_article_categories_category ON article_categories(category_id);
+    CREATE INDEX IF NOT EXISTS idx_article_references_article ON article_references(article_id, position, id);
   `);
 }
 
@@ -107,7 +127,25 @@ export async function saveArticleVersion(client, articleId, editorId) {
               FROM article_categories ac
               JOIN categories c ON c.id = ac.category_id
               WHERE ac.article_id = a.id
-            ), '') AS categories
+            ), '') AS categories,
+            COALESCE((
+              SELECT jsonb_agg(
+                jsonb_build_object(
+                  'citation_key', ar.citation_key,
+                  'title', ar.title,
+                  'author', ar.author,
+                  'publisher', ar.publisher,
+                  'url', ar.url,
+                  'published_date', ar.published_date,
+                  'accessed_date', ar.accessed_date,
+                  'note', ar.note,
+                  'position', ar.position
+                )
+                ORDER BY ar.position, ar.id
+              )
+              FROM article_references ar
+              WHERE ar.article_id = a.id
+            ), '[]'::jsonb) AS references_snapshot
      FROM articles a
      WHERE a.id = $1`,
     [articleId],
@@ -122,8 +160,8 @@ export async function saveArticleVersion(client, articleId, editorId) {
 
   await client.query(
     `INSERT INTO article_versions
-      (article_id, version_no, title, summary, content, status, categories, editor_id)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
+      (article_id, version_no, title, summary, content, status, categories, references_snapshot, editor_id)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
     [
       articleId,
       versionResult.rows[0].next,
@@ -132,6 +170,7 @@ export async function saveArticleVersion(client, articleId, editorId) {
       article.content,
       article.status,
       article.categories,
+      article.references_snapshot,
       editorId,
     ],
   );
@@ -208,6 +247,44 @@ export async function getArticleCategories(articleId) {
      JOIN article_categories ac ON ac.category_id = c.id
      WHERE ac.article_id = $1
      ORDER BY c.name ASC`,
+    [articleId],
+  );
+  return rows;
+}
+
+
+export async function syncArticleReferences(client, articleId, references) {
+  await client.query("DELETE FROM article_references WHERE article_id = $1", [articleId]);
+
+  for (let index = 0; index < references.length; index += 1) {
+    const ref = references[index];
+    await client.query(
+      `INSERT INTO article_references
+        (article_id, citation_key, title, author, publisher, url, published_date, accessed_date, note, position)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
+      [
+        articleId,
+        ref.citation_key,
+        ref.title,
+        ref.author,
+        ref.publisher,
+        ref.url,
+        ref.published_date || null,
+        ref.accessed_date || null,
+        ref.note,
+        index,
+      ],
+    );
+  }
+}
+
+export async function getArticleReferences(articleId) {
+  const { rows } = await pool.query(
+    `SELECT id, citation_key, title, author, publisher, url,
+            published_date, accessed_date, note, position
+     FROM article_references
+     WHERE article_id = $1
+     ORDER BY position ASC, id ASC`,
     [articleId],
   );
   return rows;
