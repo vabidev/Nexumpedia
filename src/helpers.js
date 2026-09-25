@@ -67,7 +67,9 @@ function inlineMarkup(text, referenceIndex = new Map()) {
   safe = safe.replace(/\[\^([A-Za-z0-9_-]{1,40})\]/g, (_match, key) => {
     const ref = referenceIndex.get(key.toLowerCase());
     if (!ref) return '<span class="citation-missing">[?]</span>';
-    return '<sup class="citation"><a href="#ref-' + escapeHtml(ref.citation_key) + '" id="cite-' + escapeHtml(ref.citation_key) + '">[' + ref.number + ']</a></sup>';
+    ref.occurrence = (ref.occurrence || 0) + 1;
+    const citeId = 'cite-' + escapeHtml(ref.citation_key) + '-' + ref.occurrence;
+    return '<sup class="citation"><a href="#ref-' + escapeHtml(ref.citation_key) + '" id="' + citeId + '">[' + ref.number + ']</a></sup>';
   });
   safe = safe.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
   safe = safe.replace(/(?<!\*)\*([^*]+)\*(?!\*)/g, "<em>$1</em>");
