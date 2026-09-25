@@ -36,6 +36,15 @@
 
     <div class="article-content"><%- renderedContent %></div>
 
+    <% if (categories.length) { %>
+      <nav class="article-categories" aria-label="Categorias">
+        <span>Categorias:</span>
+        <% for (const category of categories) { %>
+          <a href="/categoria/<%= encodeURIComponent(category.slug) %>"><%= category.name %></a>
+        <% } %>
+      </nav>
+    <% } %>
+
     <footer class="footer">
       <% if (article.published_at) { %>Publicado em <%= formatDate(article.published_at) %> · <% } %>
       última atualização em <%= formatDate(article.updated_at) %>.
