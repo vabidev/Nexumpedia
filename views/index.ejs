@@ -1,4 +1,8 @@
-<%- include("partials/header", { title, q }) %>
+<%- include("partials/header", {
+  title,
+  q,
+  searchAction: selectedCategory ? "/categoria/" + encodeURIComponent(selectedCategory.slug) : "/"
+}) %>
 <div class="page">
   <%- include("partials/sidebar") %>
 
