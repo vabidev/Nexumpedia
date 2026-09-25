@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Painel editorial — Nexumpedia</title>
+  <link rel="icon" href="assets/img/nexumpedia-mark.svg">
+  <link rel="stylesheet" href="assets/css/nexumpedia.css">
+</head>
+<body>
+<header class="topbar">
+  <a class="brand" href="index.html">
+    <img src="assets/img/nexumpedia-mark.svg" alt="">
+    <span><span class="brand-name">Nexumpedia</span><span class="brand-tagline">PAINEL EDITORIAL</span></span>
+  </a>
+  <div></div>
+  <nav class="usernav">
+    <a href="index.html">Ver site</a>
+    <button class="icon-btn" data-theme-toggle aria-label="Alternar tema">◐</button>
+  </nav>
+</header>
+
+<main class="admin-shell">
+  <div class="prototype"><strong>Protótipo de interface:</strong> esta tela ainda não possui autenticação real, banco de dados nem ações de publicação.</div>
+
+  <div class="admin-header">
+    <div>
+      <div class="meta">Área editorial</div>
+      <h1>Painel</h1>
+    </div>
+    <a class="primary" href="#">+ Novo artigo</a>
+  </div>
+
+  <div class="dashboard">
+    <div class="stat"><span class="meta">Publicados</span><strong>12</strong><span class="badge good">ativos</span></div>
+    <div class="stat"><span class="meta">Em revisão</span><strong>3</strong><span class="badge">aguardando</span></div>
+    <div class="stat"><span class="meta">Rascunhos</span><strong>7</strong><span class="badge">internos</span></div>
+    <div class="stat"><span class="meta">Colaboradores</span><strong>4</strong><span class="badge">autorizados</span></div>
+  </div>
+
+  <h2 style="font-size:24px">Artigos recentes</h2>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Artigo</th><th>Autor</th><th>Estado</th><th>Atualização</th><th>Ação</th></tr></thead>
+      <tbody>
+        <tr><td><a href="artigo.html">Nexumpedia</a></td><td>Administrador</td><td><span class="badge good">Publicado</span></td><td>Hoje</td><td><a href="#">Editar</a></td></tr>
+        <tr><td>História da internet</td><td>Colaborador 01</td><td><span class="badge">Em revisão</span></td><td>Hoje</td><td><a href="#">Revisar</a></td></tr>
+        <tr><td>Computação</td><td>Colaborador 02</td><td><span class="badge">Rascunho</span></td><td>Ontem</td><td><a href="#">Abrir</a></td></tr>
+        <tr><td>Brasil</td><td>Administrador</td><td><span class="badge good">Publicado</span></td><td>2 dias</td><td><a href="#">Editar</a></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2 style="font-size:24px">Próximos módulos</h2>
+  <div class="home-grid">
+    <section class="card"><div class="card-title">Editor de artigos</div><div class="card-body">Texto estruturado, referências, infobox, categorias, pré-visualização e controle de publicação.</div></section>
+    <section class="card"><div class="card-title">Biblioteca de mídia</div><div class="card-body">Upload de imagens, metadados, autoria, legenda, origem e utilização em artigos.</div></section>
+  </div>
+</main>
+<script src="assets/js/nexumpedia.js"></script>
+</body>
+</html>
