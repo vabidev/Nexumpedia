@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title><%= title === "Nexumpedia" ? "Nexumpedia — Conhecimento em conexão" : title + " — Nexumpedia" %></title>
+  <meta name="description" content="Nexumpedia, uma enciclopédia digital de conteúdo editorial revisado.">
+  <link rel="icon" href="/assets/img/nexumpedia-mark.svg">
+  <link rel="stylesheet" href="/assets/css/nexumpedia.css">
+</head>
+<body>
+<header class="topbar">
+  <a class="brand" href="/" aria-label="Nexumpedia, página principal">
+    <img src="/assets/img/nexumpedia-mark.svg" alt="">
+    <span>
+      <span class="brand-name">Nexumpedia</span>
+      <span class="brand-tagline">CONHECIMENTO EM CONEXÃO</span>
+    </span>
+  </a>
+
+  <% if (typeof showSearch === "undefined" || showSearch) { %>
+    <form class="search" role="search" method="get" action="/">
+      <input type="search" name="q" aria-label="Pesquisar na Nexumpedia" placeholder="Pesquisar na Nexumpedia" value="<%= typeof q !== "undefined" ? q : "" %>">
+      <button>Pesquisar</button>
+    </form>
+  <% } else { %>
+    <div></div>
+  <% } %>
+
+  <nav class="usernav" aria-label="Conta">
+    <% if (user) { %>
+      <a class="hide-md" href="/painel"><%= user.display_name %></a>
+      <form method="post" action="/logout" class="inline-form">
+        <input type="hidden" name="_csrf" value="<%= csrf %>">
+        <button class="link-button" type="submit">Sair</button>
+      </form>
+    <% } else { %>
+      <a href="/login">Entrar</a>
+    <% } %>
+    <button class="icon-btn" type="button" data-theme-toggle aria-label="Alternar tema">◐</button>
+    <button class="icon-btn mobile-menu" type="button" data-menu-toggle aria-label="Abrir menu">☰</button>
+  </nav>
+</header>
+
+<% for (const flash of flashes || []) { %>
+  <div class="flash <%= flash.type === "error" ? "error" : flash.type === "success" ? "success" : "info" %>"><%= flash.message %></div>
+<% } %>
