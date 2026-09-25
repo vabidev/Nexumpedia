@@ -18,6 +18,8 @@ import {
   getArticleCategories,
   syncArticleReferences,
   getArticleReferences,
+  syncArticleInfobox,
+  getArticleInfobox,
 } from "./db.js";
 import {
   canEditArticle,
@@ -148,6 +150,52 @@ function parseReferences(body) {
   }
 
   return references;
+}
+
+function parseInfobox(body) {
+  const labels = formArray(body.infobox_label);
+  const values = formArray(body.infobox_value);
+  const fields = [];
+  const count = Math.min(Math.max(labels.length, values.length), 20);
+
+  for (let index = 0; index < count; index += 1) {
+    const label = String(labels[index] || "").trim();
+    const value = String(values[index] || "").trim();
+    if (!label && !value) continue;
+    fields.push({ label, value });
+  }
+
+  const mediaId = Number(body.infobox_media_id || 0);
+
+  return {
+    title: String(body.infobox_title || "").trim(),
+    media_id: Number.isInteger(mediaId) && mediaId > 0 ? mediaId : null,
+    caption: String(body.infobox_caption || "").trim(),
+    fields,
+  };
+}
+
+function validateInfobox(infobox) {
+  const errors = [];
+  if (infobox.title.length > 160) errors.push("O título da infobox é muito longo.");
+  if (infobox.caption.length > 240) errors.push("A legenda da infobox é muito longa.");
+  if (infobox.fields.length > 20) errors.push("A infobox pode ter no máximo 20 campos.");
+
+  for (const field of infobox.fields) {
+    if (field.label.length < 1 || field.label.length > 80) {
+      errors.push("Cada campo da infobox precisa de um rótulo com até 80 caracteres.");
+    }
+    if (field.value.length < 1 || field.value.length > 500) {
+      errors.push(`O valor do campo “${field.label || "sem nome"}” precisa ter entre 1 e 500 caracteres.`);
+    }
+  }
+  return errors;
+}
+
+async function validateInfoboxMedia(infobox) {
+  if (!infobox.media_id) return [];
+  const { rows } = await pool.query("SELECT id FROM media WHERE id = $1", [infobox.media_id]);
+  return rows.length ? [] : ["A imagem selecionada para a infobox não existe mais."];
 }
 
 function validateReferences(references, content) {
@@ -472,12 +520,14 @@ app.get("/artigo/:slug", async (req, res, next) => {
 
     const categories = await getArticleCategories(article.id);
     const references = await getArticleReferences(article.id);
+    const infobox = await getArticleInfobox(article.id);
 
     res.render("article", {
       title: article.title,
       article,
       categories,
       references,
+      infobox,
       headings: headingsFromContent(article.content),
       renderedContent: renderMarkup(article.content, references),
       editable: canEditArticle(article, req.user),
@@ -564,12 +614,21 @@ app.get("/editor", requireLogin, async (req, res, next) => {
       ? (await getArticleCategories(article.id)).map((category) => category.name).join(", ")
       : "";
     const references = article ? await getArticleReferences(article.id) : [];
+    const infobox = article ? await getArticleInfobox(article.id) : null;
+    const { rows: media } = await pool.query(
+      `SELECT id, original_name, alt_text
+       FROM media
+       ORDER BY created_at DESC
+       LIMIT 100`,
+    );
 
     res.render("editor", {
       title: article ? "Editar artigo" : "Novo artigo",
       article,
       categories,
       references,
+      infobox,
+      media,
       errors: [],
     });
   } catch (error) {
@@ -585,6 +644,7 @@ app.post("/editor", requireLogin, requireCsrf, async (req, res, next) => {
   const categoryNames = parseCategories(req.body.categories);
   const categories = categoryNames.join(", ");
   const references = parseReferences(req.body);
+  const infobox = parseInfobox(req.body);
   const action = String(req.body.action || "save");
   const errors = [];
 
@@ -599,6 +659,8 @@ app.post("/editor", requireLogin, requireCsrf, async (req, res, next) => {
     errors.push("Cada categoria deve ter entre 2 e 60 caracteres.");
   }
   errors.push(...validateReferences(references, content));
+  errors.push(...validateInfobox(infobox));
+  errors.push(...await validateInfoboxMedia(infobox));
   if (!allowedActions.includes(action)) errors.push("Ação editorial inválida.");
 
   let article = null;
@@ -615,6 +677,10 @@ app.post("/editor", requireLogin, requireCsrf, async (req, res, next) => {
       article: { ...(article || {}), id, title, summary, content },
       categories,
       references,
+      infobox,
+      media: (await pool.query(
+        "SELECT id, original_name, alt_text FROM media ORDER BY created_at DESC LIMIT 100"
+      )).rows,
       errors,
     });
   }
@@ -662,6 +728,7 @@ app.post("/editor", requireLogin, requireCsrf, async (req, res, next) => {
 
     await syncArticleCategories(client, articleId, categoryNames);
     await syncArticleReferences(client, articleId, references);
+    await syncArticleInfobox(client, articleId, infobox);
     await saveArticleVersion(client, articleId, req.user.id);
     await client.query("COMMIT");
 
