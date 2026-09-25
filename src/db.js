@@ -56,6 +56,20 @@ export async function migrate() {
       UNIQUE(article_id, version_no)
     );
 
+    CREATE TABLE IF NOT EXISTS categories (
+      id BIGSERIAL PRIMARY KEY,
+      name VARCHAR(60) NOT NULL,
+      slug VARCHAR(80) NOT NULL UNIQUE,
+      description VARCHAR(240) NOT NULL DEFAULT '',
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+
+    CREATE TABLE IF NOT EXISTS article_categories (
+      article_id BIGINT NOT NULL REFERENCES articles(id) ON DELETE CASCADE,
+      category_id BIGINT NOT NULL REFERENCES categories(id) ON DELETE CASCADE,
+      PRIMARY KEY(article_id, category_id)
+    );
+
     CREATE TABLE IF NOT EXISTS media (
       id BIGSERIAL PRIMARY KEY,
       original_name TEXT NOT NULL,
@@ -72,6 +86,7 @@ export async function migrate() {
     CREATE INDEX IF NOT EXISTS idx_articles_status ON articles(status);
     CREATE INDEX IF NOT EXISTS idx_articles_author ON articles(author_id);
     CREATE INDEX IF NOT EXISTS idx_versions_article ON article_versions(article_id, version_no DESC);
+    CREATE INDEX IF NOT EXISTS idx_article_categories_category ON article_categories(category_id);
   `);
 }
 
@@ -107,4 +122,53 @@ export async function saveArticleVersion(client, articleId, editorId) {
       editorId,
     ],
   );
+}
+
+
+export async function syncArticleCategories(client, articleId, names) {
+  const clean = [...new Set(
+    names
+      .map((name) => String(name).trim().replace(/\s+/g, " "))
+      .filter(Boolean)
+      .slice(0, 8),
+  )];
+
+  await client.query("DELETE FROM article_categories WHERE article_id = $1", [articleId]);
+
+  for (const name of clean) {
+    const slug = name
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .slice(0, 80) || "categoria";
+
+    const categoryResult = await client.query(
+      `INSERT INTO categories (name, slug)
+       VALUES ($1, $2)
+       ON CONFLICT (slug) DO UPDATE SET name = EXCLUDED.name
+       RETURNING id`,
+      [name, slug],
+    );
+
+    await client.query(
+      `INSERT INTO article_categories (article_id, category_id)
+       VALUES ($1, $2)
+       ON CONFLICT DO NOTHING`,
+      [articleId, categoryResult.rows[0].id],
+    );
+  }
+}
+
+export async function getArticleCategories(articleId) {
+  const { rows } = await pool.query(
+    `SELECT c.id, c.name, c.slug
+     FROM categories c
+     JOIN article_categories ac ON ac.category_id = c.id
+     WHERE ac.article_id = $1
+     ORDER BY c.name ASC`,
+    [articleId],
+  );
+  return rows;
 }
