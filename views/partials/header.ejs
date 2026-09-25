@@ -19,7 +19,7 @@
   </a>
 
   <% if (typeof showSearch === "undefined" || showSearch) { %>
-    <form class="search" role="search" method="get" action="/">
+    <form class="search" role="search" method="get" action="<%= typeof searchAction !== "undefined" ? searchAction : "/" %>">
       <input type="search" name="q" aria-label="Pesquisar na Nexumpedia" placeholder="Pesquisar na Nexumpedia" value="<%= typeof q !== "undefined" ? q : "" %>">
       <button>Pesquisar</button>
     </form>
