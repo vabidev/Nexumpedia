@@ -1,0 +1,88 @@
+<%- include("partials/header", { title, showSearch: false }) %>
+<div class="page">
+  <%- include("partials/sidebar") %>
+
+  <main class="article">
+    <div class="preview-banner">
+      <strong>Pré-visualização.</strong> Nada nesta página foi salvo ou publicado.
+      <button class="link-button" type="button" onclick="window.close()">Fechar prévia</button>
+    </div>
+
+    <header class="article-header">
+      <div class="article-kicker">Prévia editorial da Nexumpedia.</div>
+      <h1><%= article.title %></h1>
+    </header>
+
+    <% if (infobox) { %>
+      <aside class="infobox">
+        <div class="infobox-title"><%= infobox.title || article.title %></div>
+        <% if (infobox.media_id) { %>
+          <div class="infobox-media">
+            <img src="/media/<%= infobox.media_id %>" alt="<%= infobox.media_alt || infobox.caption || infobox.media_name || article.title %>">
+            <% if (infobox.caption) { %><div class="infobox-caption"><%= infobox.caption %></div><% } %>
+          </div>
+        <% } %>
+        <% if (infobox.fields.length) { %>
+          <dl>
+            <% for (const field of infobox.fields) { %>
+              <dt><%= field.label %></dt><dd><%= field.value %></dd>
+            <% } %>
+          </dl>
+        <% } %>
+      </aside>
+    <% } %>
+
+    <% if (article.summary) { %><p class="lead"><%= article.summary %></p><% } %>
+
+    <% if (headings.length || references.length) { %>
+      <nav class="inline-toc" aria-label="Índice">
+        <strong>Índice</strong>
+        <ol>
+          <% for (const heading of headings) { %><li><a href="#<%= heading.id %>"><%= heading.title %></a></li><% } %>
+          <% if (references.length) { %><li><a href="#referencias">Referências</a></li><% } %>
+        </ol>
+      </nav>
+    <% } %>
+
+    <div class="article-content"><%- renderedContent %></div>
+
+    <% if (references.length) { %>
+      <section class="references-section">
+        <h2 id="referencias">Referências</h2>
+        <ol class="references-list">
+          <% for (let index = 0; index < references.length; index += 1) { const ref = references[index]; %>
+            <li id="ref-<%= ref.citation_key %>">
+              <% if (ref.author) { %><span class="reference-author"><%= ref.author %>.</span> <% } %>
+              <% if (ref.url) { %>
+                <a href="<%= ref.url %>" rel="noopener noreferrer"><cite><%= ref.title %></cite></a>.
+              <% } else { %>
+                <cite><%= ref.title %></cite>.
+              <% } %>
+              <% if (ref.publisher) { %> <%= ref.publisher %>.<% } %>
+              <% if (ref.published_date) { %> <%= ref.published_date %>.<% } %>
+              <% if (ref.note) { %> <%= ref.note %>.<% } %>
+              <% if (ref.accessed_date) { %> Acesso em <%= ref.accessed_date %>.<% } %>
+              <a class="reference-backlink" href="#cite-<%= ref.citation_key %>-1">↑</a>
+            </li>
+          <% } %>
+        </ol>
+      </section>
+    <% } %>
+
+    <% if (categories.length) { %>
+      <nav class="article-categories" aria-label="Categorias">
+        <span>Categorias:</span>
+        <% for (const category of categories) { %><span class="preview-category"><%= category %></span><% } %>
+      </nav>
+    <% } %>
+
+    <footer class="footer">Pré-visualização não salva · <?= "" ?></footer>
+  </main>
+
+  <aside class="toc-side">
+    <div class="nav-title">Nesta página</div>
+    <% for (const heading of headings) { %><a href="#<%= heading.id %>"><%= heading.title %></a><% } %>
+    <% if (references.length) { %><a href="#referencias">Referências</a><% } %>
+  </aside>
+</div>
+<%- include("partials/footer") %>
