@@ -11,6 +11,24 @@ permissions:
 jobs:
   check:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: nexumpedia_test
+          POSTGRES_USER: nexumpedia
+          POSTGRES_PASSWORD: nexumpedia
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U nexumpedia -d nexumpedia_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      NODE_ENV: test
+      DATABASE_URL: postgresql://nexumpedia:nexumpedia@127.0.0.1:5432/nexumpedia_test
+      SESSION_SECRET: github-actions-test-secret-0123456789
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -18,5 +36,5 @@ jobs:
           node-version: 22
       - name: Install dependencies
         run: npm install --ignore-scripts --no-audit --no-fund
-      - name: Validate JavaScript and EJS
+      - name: Validate application
         run: npm run check
