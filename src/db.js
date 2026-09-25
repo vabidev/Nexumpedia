@@ -100,8 +100,25 @@ export async function migrate() {
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
 
+    CREATE TABLE IF NOT EXISTS article_infoboxes (
+      article_id BIGINT PRIMARY KEY REFERENCES articles(id) ON DELETE CASCADE,
+      title VARCHAR(160) NOT NULL DEFAULT '',
+      media_id BIGINT REFERENCES media(id) ON DELETE SET NULL,
+      caption VARCHAR(240) NOT NULL DEFAULT '',
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+
+    CREATE TABLE IF NOT EXISTS article_infobox_fields (
+      id BIGSERIAL PRIMARY KEY,
+      article_id BIGINT NOT NULL REFERENCES articles(id) ON DELETE CASCADE,
+      label VARCHAR(80) NOT NULL,
+      value VARCHAR(500) NOT NULL,
+      position INTEGER NOT NULL DEFAULT 0
+    );
+
     ALTER TABLE article_versions ADD COLUMN IF NOT EXISTS categories TEXT NOT NULL DEFAULT '';
     ALTER TABLE article_versions ADD COLUMN IF NOT EXISTS references_snapshot JSONB NOT NULL DEFAULT '[]'::jsonb;
+    ALTER TABLE article_versions ADD COLUMN IF NOT EXISTS infobox_snapshot JSONB NOT NULL DEFAULT '{}'::jsonb;
 
     CREATE UNIQUE INDEX IF NOT EXISTS idx_users_username_lower ON users(LOWER(username));
     CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email_lower ON users(LOWER(email));
@@ -113,6 +130,8 @@ export async function migrate() {
     CREATE INDEX IF NOT EXISTS idx_article_references_article ON article_references(article_id, position, id);
     CREATE UNIQUE INDEX IF NOT EXISTS idx_article_references_key_lower
       ON article_references(article_id, LOWER(citation_key));
+    CREATE INDEX IF NOT EXISTS idx_article_infobox_fields_article
+      ON article_infobox_fields(article_id, position, id);
   `);
 }
 
@@ -147,7 +166,28 @@ export async function saveArticleVersion(client, articleId, editorId) {
               )
               FROM article_references ar
               WHERE ar.article_id = a.id
-            ), '[]'::jsonb) AS references_snapshot
+            ), '[]'::jsonb) AS references_snapshot,
+            COALESCE((
+              SELECT jsonb_build_object(
+                'title', ai.title,
+                'media_id', ai.media_id,
+                'caption', ai.caption,
+                'fields', COALESCE((
+                  SELECT jsonb_agg(
+                    jsonb_build_object(
+                      'label', aif.label,
+                      'value', aif.value,
+                      'position', aif.position
+                    )
+                    ORDER BY aif.position, aif.id
+                  )
+                  FROM article_infobox_fields aif
+                  WHERE aif.article_id = a.id
+                ), '[]'::jsonb)
+              )
+              FROM article_infoboxes ai
+              WHERE ai.article_id = a.id
+            ), '{}'::jsonb) AS infobox_snapshot
      FROM articles a
      WHERE a.id = $1`,
     [articleId],
@@ -162,8 +202,8 @@ export async function saveArticleVersion(client, articleId, editorId) {
 
   await client.query(
     `INSERT INTO article_versions
-      (article_id, version_no, title, summary, content, status, categories, references_snapshot, editor_id)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
+      (article_id, version_no, title, summary, content, status, categories, references_snapshot, infobox_snapshot, editor_id)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
     [
       articleId,
       versionResult.rows[0].next,
@@ -173,6 +213,7 @@ export async function saveArticleVersion(client, articleId, editorId) {
       article.status,
       article.categories,
       article.references_snapshot,
+      article.infobox_snapshot,
       editorId,
     ],
   );
@@ -292,4 +333,69 @@ export async function getArticleReferences(articleId) {
     [articleId],
   );
   return rows;
+}
+
+
+export async function syncArticleInfobox(client, articleId, infobox) {
+  await client.query("DELETE FROM article_infobox_fields WHERE article_id = $1", [articleId]);
+
+  const hasContent = Boolean(
+    infobox.title
+    || infobox.media_id
+    || infobox.caption
+    || infobox.fields.length
+  );
+
+  if (!hasContent) {
+    await client.query("DELETE FROM article_infoboxes WHERE article_id = $1", [articleId]);
+    return;
+  }
+
+  await client.query(
+    `INSERT INTO article_infoboxes (article_id, title, media_id, caption, updated_at)
+     VALUES ($1,$2,$3,$4,NOW())
+     ON CONFLICT (article_id) DO UPDATE SET
+       title = EXCLUDED.title,
+       media_id = EXCLUDED.media_id,
+       caption = EXCLUDED.caption,
+       updated_at = NOW()`,
+    [articleId, infobox.title, infobox.media_id || null, infobox.caption],
+  );
+
+  for (let index = 0; index < infobox.fields.length; index += 1) {
+    const field = infobox.fields[index];
+    await client.query(
+      `INSERT INTO article_infobox_fields (article_id, label, value, position)
+       VALUES ($1,$2,$3,$4)`,
+      [articleId, field.label, field.value, index],
+    );
+  }
+}
+
+export async function getArticleInfobox(articleId) {
+  const infoboxResult = await pool.query(
+    `SELECT ai.article_id, ai.title, ai.media_id, ai.caption,
+            m.alt_text AS media_alt, m.original_name AS media_name
+     FROM article_infoboxes ai
+     LEFT JOIN media m ON m.id = ai.media_id
+     WHERE ai.article_id = $1
+     LIMIT 1`,
+    [articleId],
+  );
+
+  const infobox = infoboxResult.rows[0];
+  if (!infobox) return null;
+
+  const fieldsResult = await pool.query(
+    `SELECT label, value, position
+     FROM article_infobox_fields
+     WHERE article_id = $1
+     ORDER BY position ASC, id ASC`,
+    [articleId],
+  );
+
+  return {
+    ...infobox,
+    fields: fieldsResult.rows,
+  };
 }
