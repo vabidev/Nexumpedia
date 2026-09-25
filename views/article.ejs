@@ -1,0 +1,51 @@
+<%- include("partials/header", { title }) %>
+<div class="page">
+  <%- include("partials/sidebar") %>
+
+  <main class="article">
+    <header class="article-header">
+      <div class="article-kicker">Da Nexumpedia, a enciclopédia de conhecimento em conexão.</div>
+      <h1><%= article.title %></h1>
+      <div class="article-tabs">
+        <div class="tabs">
+          <a class="tab active" href="/artigo/<%= encodeURIComponent(article.slug) %>">Artigo</a>
+          <a class="tab" href="/historico/<%= encodeURIComponent(article.slug) %>">Histórico</a>
+        </div>
+        <div class="article-tools">
+          <% if (editable) { %><a href="/editor?id=<%= article.id %>">Editar</a><% } %>
+        </div>
+      </div>
+    </header>
+
+    <% if (article.status !== "published") { %>
+      <div class="notice"><strong><%= statusLabel(article.status) %>.</strong> Esta versão só está visível porque você possui acesso editorial.</div>
+    <% } %>
+
+    <% if (article.summary) { %><p class="lead"><%= article.summary %></p><% } %>
+
+    <% if (headings.length) { %>
+      <nav class="inline-toc" aria-label="Índice">
+        <strong>Índice</strong>
+        <ol>
+          <% for (const heading of headings) { %>
+            <li><a href="#<%= heading.id %>"><%= heading.title %></a></li>
+          <% } %>
+        </ol>
+      </nav>
+    <% } %>
+
+    <div class="article-content"><%- renderedContent %></div>
+
+    <footer class="footer">
+      <% if (article.published_at) { %>Publicado em <%= formatDate(article.published_at) %> · <% } %>
+      última atualização em <%= formatDate(article.updated_at) %>.
+      Autor inicial: <%= article.author_name %>.
+    </footer>
+  </main>
+
+  <aside class="toc-side" aria-label="Nesta página">
+    <div class="nav-title">Nesta página</div>
+    <% for (const heading of headings) { %><a href="#<%= heading.id %>"><%= heading.title %></a><% } %>
+  </aside>
+</div>
+<%- include("partials/footer") %>
