@@ -1,0 +1,41 @@
+<%- include("partials/header", { title }) %>
+<div class="page">
+  <%- include("partials/sidebar") %>
+  <main class="article">
+    <header class="article-header">
+      <div class="article-kicker">Histórico de versões</div>
+      <h1><%= article.title %></h1>
+      <div class="article-tabs">
+        <div class="tabs">
+          <a class="tab" href="/artigo/<%= encodeURIComponent(article.slug) %>">Artigo</a>
+          <a class="tab active" href="/historico/<%= encodeURIComponent(article.slug) %>">Histórico</a>
+        </div>
+      </div>
+    </header>
+
+    <p>Cada salvamento cria uma versão independente. Rascunhos e versões em revisão ficam visíveis apenas para usuários com acesso editorial.</p>
+
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Versão</th><th>Estado</th><th>Editor</th><th>Data</th><th>Resumo</th></tr></thead>
+        <tbody>
+          <% if (!versions.length) { %>
+            <tr><td colspan="5">Nenhuma versão disponível.</td></tr>
+          <% } else { %>
+            <% for (const version of versions) { %>
+              <tr>
+                <td>#<%= version.version_no %></td>
+                <td><span class="badge <%= version.status === "published" ? "good" : "" %>"><%= statusLabel(version.status) %></span></td>
+                <td><%= version.editor_name %></td>
+                <td><%= formatDate(version.created_at) %></td>
+                <td><%= version.summary.length > 100 ? version.summary.slice(0,100) + "…" : version.summary %></td>
+              </tr>
+            <% } %>
+          <% } %>
+        </tbody>
+      </table>
+    </div>
+  </main>
+  <aside class="toc-side"><div class="nav-title">Ferramentas</div><a href="/artigo/<%= encodeURIComponent(article.slug) %>">Voltar ao artigo</a></aside>
+</div>
+<%- include("partials/footer") %>
