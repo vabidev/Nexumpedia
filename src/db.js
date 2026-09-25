@@ -1,3 +1,4 @@
+import "dotenv/config";
 import pg from "pg";
 
 const { Pool } = pg;
@@ -6,11 +7,11 @@ if (!process.env.DATABASE_URL) {
   throw new Error("DATABASE_URL não configurada.");
 }
 
+const isLocalDatabase = /(?:localhost|127\.0\.0\.1)/i.test(process.env.DATABASE_URL);
+
 export const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: process.env.NODE_ENV === "production"
-    ? { rejectUnauthorized: false }
-    : undefined,
+  ssl: isLocalDatabase ? false : { rejectUnauthorized: false },
 });
 
 export async function migrate() {
@@ -66,6 +67,8 @@ export async function migrate() {
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
 
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_users_username_lower ON users(LOWER(username));
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email_lower ON users(LOWER(email));
     CREATE INDEX IF NOT EXISTS idx_articles_status ON articles(status);
     CREATE INDEX IF NOT EXISTS idx_articles_author ON articles(author_id);
     CREATE INDEX IF NOT EXISTS idx_versions_article ON article_versions(article_id, version_no DESC);
