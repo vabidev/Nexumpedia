@@ -195,6 +195,7 @@ label input,label textarea,label select{display:block;margin-top:5px;font-weight
 .auth-card{width:min(460px,100%);border:1px solid var(--border);background:var(--bg);padding:28px;box-shadow:var(--shadow)}
 .auth-card h1{font-size:30px;text-align:center;margin-top:8px}
 .auth-logo{display:block;width:82px;height:82px;margin:0 auto}
+.auth-logo .brand-mark{width:82px;height:82px;flex-basis:82px}
 .stack-form{display:grid;gap:14px;margin-top:20px}
 .button-row,.editor-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 .secondary,.danger{display:inline-block;background:var(--bg);color:var(--text);border:1px solid var(--border);padding:8px 12px;border-radius:3px}
