@@ -326,3 +326,7 @@ label input,label textarea,label select{display:block;margin-top:5px;font-weight
   .review-editor-status{flex-direction:column}
   .review-comment-head time{margin-left:0;width:100%}
 }
+
+.login-notice{margin:12px 0 0}
+.account-security-note{margin-top:16px}
+.backup-warning{margin-bottom:18px}
