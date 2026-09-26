@@ -4,6 +4,7 @@
   if (savedTheme === "dark") root.dataset.theme = "dark";
 
   document.querySelectorAll("[data-theme-toggle]").forEach(btn => {
+    btn.setAttribute("aria-pressed", root.dataset.theme === "dark" ? "true" : "false");
     btn.addEventListener("click", () => {
       const dark = root.dataset.theme === "dark";
       if (dark) {
@@ -13,13 +14,17 @@
         root.dataset.theme = "dark";
         localStorage.setItem("nexumpedia-theme", "dark");
       }
+      btn.setAttribute("aria-pressed", root.dataset.theme === "dark" ? "true" : "false");
     });
   });
 
   document.querySelectorAll("[data-menu-toggle]").forEach(btn => {
     btn.addEventListener("click", () => {
       const nav = document.querySelector(".sidebar");
-      if (nav) nav.classList.toggle("open");
+      if (nav) {
+        nav.classList.toggle("open");
+        btn.setAttribute("aria-expanded", nav.classList.contains("open") ? "true" : "false");
+      }
     });
   });
 
