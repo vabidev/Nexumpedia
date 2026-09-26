@@ -8,7 +8,10 @@
     <div class="button-row">
       <a class="primary" href="/editor">+ Novo artigo</a>
       <a class="secondary" href="/midia">Mídia</a>
-      <% if (user.role === "admin") { %><a class="secondary" href="/usuarios">Usuários</a><% } %>
+      <% if (user.role === "admin") { %>
+        <a class="secondary" href="/revisoes">Revisões <span class="button-count"><%= pendingReviewCount %></span></a>
+        <a class="secondary" href="/usuarios">Usuários</a>
+      <% } %>
     </div>
   </div>
 
@@ -47,6 +50,9 @@
                 · <a href="/editor?id=<%= article.id %>">Editar</a>
               <% } %>
               · <a href="/historico/<%= encodeURIComponent(article.slug) %>">Histórico</a>
+              <% if (article.last_review_id) { %>
+                · <a href="/revisao/<%= article.last_review_id %>">Revisão: <%= reviewStatusLabel(article.last_review_status) %></a>
+              <% } %>
             </td>
           </tr>
         <% } %>
