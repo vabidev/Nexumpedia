@@ -1,18 +1,15 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 160" role="img" aria-labelledby="title desc">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" role="img" aria-labelledby="title desc">
   <title id="title">Nexumpedia</title>
-  <desc id="desc">Símbolo com a letra N, páginas de livro e linhas de conexão.</desc>
-  <defs>
-    <linearGradient id="g" x1="0" x2="1" y1="0" y2="1">
-      <stop offset="0" stop-color="#3f6b93"/>
-      <stop offset="1" stop-color="#0b2d4a"/>
-    </linearGradient>
-  </defs>
-  <circle cx="80" cy="71" r="51" fill="none" stroke="url(#g)" stroke-width="5"/>
-  <path d="M31 73c28-15 62-17 98-2M40 45c25 12 54 14 81 5M47 104c23-9 47-8 68 0M80 20c-13 17-20 34-20 52 0 17 6 33 18 49M80 20c14 17 21 34 21 52 0 17-6 33-18 49" fill="none" stroke="#8ca9c4" stroke-width="3" stroke-linecap="round"/>
-  <circle cx="37" cy="70" r="5" fill="#0b2d4a"/>
-  <circle cx="119" cy="49" r="5" fill="#3f6b93"/>
-  <circle cx="104" cy="108" r="5" fill="#0b2d4a"/>
-  <path d="M45 121c16-4 27-1 35 8 8-9 20-12 35-8l-6 17c-12-2-21 1-29 8-8-7-17-10-29-8z" fill="#f7f9fb" stroke="#0b2d4a" stroke-width="4" stroke-linejoin="round"/>
-  <path d="M80 130v16" stroke="#0b2d4a" stroke-width="3"/>
-  <path d="M56 42h18l30 50V42h14v63h-18L70 55v50H56z" fill="#102942"/>
+  <desc id="desc">Monograma N sobre um livro aberto, cercado por um arco de conexão.</desc>
+  <style>
+    .main{stroke:#0b2d4a}.accent{stroke:#3f6b93}.page{fill:#fff;stroke:#0b2d4a}
+    @media (prefers-color-scheme:dark){
+      .main{stroke:#e8eef5}.accent{stroke:#8ca9c4}.page{fill:#101418;stroke:#e8eef5}
+    }
+  </style>
+  <path class="accent" d="M9.5 28.5A17.5 17.5 0 1 1 38.8 30" fill="none" stroke-width="2.4" stroke-linecap="round"/>
+  <circle cx="38.2" cy="15.2" r="2.3" fill="#3f6b93"/>
+  <path class="main" d="M14.5 31V13.5L33.5 34.5V13.5" fill="none" stroke-width="4.1" stroke-linecap="square" stroke-linejoin="round"/>
+  <path class="page" d="M7.5 33.5c6.7-1.5 12.1-.2 16.5 4.1 4.4-4.3 9.8-5.6 16.5-4.1l-2.1 8.1c-5.5-.8-10.2.7-14.4 4.1-4.2-3.4-8.9-4.9-14.4-4.1z" stroke-width="2.2" stroke-linejoin="round"/>
+  <path class="main" d="M24 37.7v8" fill="none" stroke-width="1.8"/>
 </svg>
