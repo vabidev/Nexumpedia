@@ -2152,6 +2152,93 @@ app.get("/health", async (_req, res) => {
   }
 });
 
+app.get("/:privatePath", async (req, res, next) => {
+  try {
+    if (req.user) {
+      return res.redirect(req.user.login_path_configured ? "/painel" : "/conta/acesso");
+    }
+
+    const { privatePath, errors } = validatePrivatePath(req.params.privatePath);
+    if (errors.length) return next();
+
+    const { rows } = await pool.query(
+      `SELECT id
+       FROM users
+       WHERE active = TRUE AND login_path_hash = $1
+       LIMIT 1`,
+      [hashPrivatePath(privatePath)],
+    );
+
+    if (!rows[0]) return next();
+
+    protectPrivateLoginResponse(res);
+    res.render("login", {
+      title: "Acesso privado",
+      error: null,
+      identity: "",
+      notice: null,
+      privateLogin: true,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post("/:privatePath", authLimiter, requireCsrf, async (req, res, next) => {
+  try {
+    const { privatePath, errors } = validatePrivatePath(req.params.privatePath);
+    if (errors.length) return next();
+
+    const { rows } = await pool.query(
+      `SELECT *
+       FROM users
+       WHERE active = TRUE AND login_path_hash = $1
+       LIMIT 1`,
+      [hashPrivatePath(privatePath)],
+    );
+
+    const user = rows[0];
+    if (!user) return next();
+
+    protectPrivateLoginResponse(res);
+
+    const password = String(req.body.password || "");
+    const now = Date.now();
+    req.session.loginAttempts = (req.session.loginAttempts || [])
+      .filter((time) => Number(time) > now - 15 * 60 * 1000);
+
+    if (req.session.loginAttempts.length >= 8) {
+      return res.status(429).render("login", {
+        title: "Acesso privado",
+        error: "Muitas tentativas. Aguarde alguns minutos.",
+        identity: "",
+        notice: null,
+        privateLogin: true,
+      });
+    }
+
+    if (!(await bcrypt.compare(password, user.password_hash))) {
+      req.session.loginAttempts.push(now);
+      return res.status(401).render("login", {
+        title: "Acesso privado",
+        error: "Senha incorreta.",
+        identity: "",
+        notice: null,
+        privateLogin: true,
+      });
+    }
+
+    req.session.regenerate((error) => {
+      if (error) return next(error);
+      req.session.userId = user.id;
+      flash(req, "success", `Bem-vindo de volta, ${user.display_name}.`);
+      req.session.save(() => res.redirect("/painel"));
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
 app.use((_req, res) => {
   res.locals.seo.robots = "noindex,nofollow";
   res.status(404).render("404", { title: "Página não encontrada" });
