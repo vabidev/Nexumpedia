@@ -21,6 +21,11 @@ for (const file of walk(viewsRoot).filter((file) => file.endsWith(".ejs"))) {
     /\son(?:click|submit|load|error|change|input)=/i,
     "Inline JavaScript encontrado em " + path.relative(root, file),
   );
+  assert.doesNotMatch(
+    content,
+    /\sstyle=/i,
+    "Estilo inline encontrado em " + path.relative(root, file),
+  );
 }
 
 const port = 3199;
@@ -64,9 +69,11 @@ try {
   const csp = response.headers.get("content-security-policy") || "";
   assert.match(csp, /default-src 'self'/);
   assert.match(csp, /script-src 'self'/);
+  assert.match(csp, /style-src 'self'/);
   assert.match(csp, /object-src 'none'/);
   assert.match(csp, /frame-ancestors 'none'/);
   assert.doesNotMatch(csp, /script-src[^;]*'unsafe-inline'/);
+  assert.doesNotMatch(csp, /style-src[^;]*'unsafe-inline'/);
 
   const frame = response.headers.get("x-frame-options");
   assert.ok(frame === "SAMEORIGIN" || frame === "DENY");
