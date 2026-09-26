@@ -8,6 +8,7 @@ import bcrypt from "bcryptjs";
 import multer from "multer";
 import helmet from "helmet";
 import compression from "compression";
+import { rateLimit } from "express-rate-limit";
 
 import {
   pool,
@@ -64,16 +65,75 @@ if (production) {
   app.set("trust proxy", 1);
 }
 
+app.disable("x-powered-by");
 app.set("view engine", "ejs");
 app.set("views", path.join(root, "views"));
 
+app.use((req, res, next) => {
+  const incoming = String(req.get("x-request-id") || "").trim();
+  const requestId = /^[A-Za-z0-9._:-]{8,100}$/.test(incoming)
+    ? incoming
+    : crypto.randomUUID();
+
+  req.requestId = requestId;
+  res.locals.requestId = requestId;
+  res.set("X-Request-Id", requestId);
+  next();
+});
+
 app.use(helmet({
-  contentSecurityPolicy: false,
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      imgSrc: ["'self'", "data:"],
+      connectSrc: ["'self'"],
+      fontSrc: ["'self'"],
+      objectSrc: ["'none'"],
+      baseUri: ["'self'"],
+      formAction: ["'self'"],
+      frameAncestors: ["'none'"],
+      upgradeInsecureRequests: production ? [] : null,
+    },
+  },
   crossOriginResourcePolicy: { policy: "same-origin" },
+  referrerPolicy: { policy: "strict-origin-when-cross-origin" },
 }));
 app.use(compression());
 app.use(express.urlencoded({ extended: false, limit: "1mb" }));
-app.use("/assets", express.static(path.join(root, "assets"), { maxAge: "7d" }));
+app.use("/assets", express.static(path.join(root, "assets"), {
+  maxAge: production ? "7d" : 0,
+  immutable: production,
+}));
+
+const globalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 500,
+  standardHeaders: "draft-8",
+  legacyHeaders: false,
+  skip: (req) => req.path === "/health" || req.path.startsWith("/health/"),
+  message: "Muitas solicitações. Tente novamente em alguns minutos.",
+});
+
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 20,
+  standardHeaders: "draft-8",
+  legacyHeaders: false,
+  skipSuccessfulRequests: true,
+  message: "Muitas tentativas de autenticação. Tente novamente mais tarde.",
+});
+
+const writeLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 150,
+  standardHeaders: "draft-8",
+  legacyHeaders: false,
+  message: "Muitas alterações em pouco tempo. Aguarde e tente novamente.",
+});
+
+app.use(globalLimiter);
 
 app.use(session({
   store: new PgSession({
@@ -96,6 +156,13 @@ app.use(session({
 app.use(attachUser);
 app.use(ensureCsrf);
 app.use(exposeFlash);
+
+app.use((req, res, next) => {
+  if (["POST", "PUT", "PATCH", "DELETE"].includes(req.method)) {
+    return writeLimiter(req, res, next);
+  }
+  next();
+});
 
 app.locals.statusLabel = statusLabel;
 app.locals.formatDate = formatDate;
@@ -372,7 +439,7 @@ app.get("/install", async (_req, res, next) => {
   }
 });
 
-app.post("/install", requireCsrf, async (req, res, next) => {
+app.post("/install", authLimiter, requireCsrf, async (req, res, next) => {
   const username = String(req.body.username || "").trim();
   const displayName = String(req.body.display_name || "").trim();
   const email = String(req.body.email || "").trim().toLowerCase();
@@ -457,7 +524,7 @@ app.get("/login", async (req, res, next) => {
   }
 });
 
-app.post("/login", requireCsrf, async (req, res, next) => {
+app.post("/login", authLimiter, requireCsrf, async (req, res, next) => {
   try {
     const identity = String(req.body.identity || "").trim();
     const password = String(req.body.password || "");
