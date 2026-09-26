@@ -13,6 +13,11 @@ test("captura visual da interface para revisão humana", async ({ page }) => {
   await expect(lightLogo).toBeVisible();
   await expect(darkLogo).toBeHidden();
   await expect(brandCopy).toBeVisible();
+
+  expect(await lightLogo.evaluate((img) => img.naturalWidth)).toBeGreaterThan(0);
+  expect(await lightLogo.evaluate((img) => img.naturalHeight)).toBeGreaterThan(0);
+  expect(await darkLogo.evaluate((img) => img.naturalWidth)).toBeGreaterThan(0);
+  expect(await darkLogo.evaluate((img) => img.naturalHeight)).toBeGreaterThan(0);
   await page.screenshot({ path: "visual-review/desktop-light.png", fullPage: true });
 
   await page.locator("[data-theme-toggle]").click();
