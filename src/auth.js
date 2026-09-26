@@ -7,7 +7,8 @@ export async function attachUser(req, res, next) {
     if (!req.session.userId) return next();
 
     const { rows } = await pool.query(
-      `SELECT id, username, display_name, email, role, active, created_at
+      `SELECT id, username, display_name, email, role, active, created_at,
+              (login_path_hash IS NOT NULL) AS login_path_configured
        FROM users WHERE id = $1`,
       [req.session.userId],
     );
@@ -52,8 +53,11 @@ export function requireCsrf(req, res, next) {
 
 export function requireLogin(req, res, next) {
   if (req.user) return next();
-  req.session.flash = [{ type: "error", message: "Entre na sua conta para acessar essa área." }];
-  res.redirect("/login");
+  req.session.flash = [{
+    type: "error",
+    message: "Sua sessão não está ativa. Use sua URL privada de acesso para entrar novamente.",
+  }];
+  res.redirect("/");
 }
 
 export function requireAdmin(req, res, next) {
