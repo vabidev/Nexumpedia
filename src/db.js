@@ -7,10 +7,19 @@ if (!process.env.DATABASE_URL) {
   throw new Error("DATABASE_URL não configurada.");
 }
 
-const isLocalDatabase = /(?:localhost|127\.0\.0\.1)/i.test(process.env.DATABASE_URL);
+const databaseUrl = new URL(process.env.DATABASE_URL);
+const isLocalDatabase = /^(?:localhost|127\.0\.0\.1)$/i.test(databaseUrl.hostname);
+
+// pg-connection-string lets sslmode in the URL override the explicit ssl object.
+// Aiven uses its own CA chain, so remove sslmode here and keep TLS enabled via
+// the explicit pg option below. This preserves encrypted connections on hosts
+// such as Vercel without requiring the provider CA to be bundled in the app.
+if (!isLocalDatabase) {
+  databaseUrl.searchParams.delete("sslmode");
+}
 
 export const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
+  connectionString: databaseUrl.toString(),
   ssl: isLocalDatabase ? false : { rejectUnauthorized: false },
 });
 
