@@ -55,8 +55,17 @@ await migrate();
 const app = express();
 const PgSession = connectPgSimple(session);
 const production = process.env.NODE_ENV === "production";
-const sessionSecret = process.env.SESSION_SECRET || (production ? "" : "nexumpedia-local-development-only");
-const loginPathSecret = process.env.LOGIN_PATH_SECRET || (production ? "" : "nexumpedia-local-login-path-secret");
+
+function derivedProductionSecret(label) {
+  const databaseUrl = String(process.env.DATABASE_URL || "");
+  if (!production || !databaseUrl) return "";
+  return crypto.createHash("sha256").update(`${label}\0${databaseUrl}`).digest("hex");
+}
+
+const sessionSecret = process.env.SESSION_SECRET
+  || (production ? derivedProductionSecret("nexumpedia-session") : "nexumpedia-local-development-only");
+const loginPathSecret = process.env.LOGIN_PATH_SECRET
+  || (production ? derivedProductionSecret("nexumpedia-login-path") : "nexumpedia-local-login-path-secret");
 const configuredSiteUrl = String(process.env.SITE_URL || "").trim().replace(/\/+$/, "");
 const publicIndexing = String(process.env.PUBLIC_INDEXING || "false").toLowerCase() === "true";
 
