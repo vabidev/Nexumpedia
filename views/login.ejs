@@ -2,19 +2,23 @@
 <main id="conteudo-principal" class="auth-shell">
   <section class="auth-card">
     <img class="auth-logo" src="/assets/img/nexumpedia-mark.svg" alt="">
-    <h1>Entrar</h1>
-    <p class="muted">A área editorial é reservada a administradores e colaboradores autorizados.</p>
+    <h1><%= privateLogin ? "Acesso privado" : "Primeiro acesso" %></h1>
+    <p class="muted"><%= privateLogin
+      ? "Informe sua senha para abrir a área editorial."
+      : "Esta página serve apenas para o primeiro acesso de contas que ainda não configuraram uma URL privada." %></p>
 
     <% if (notice) { %><div class="flash success login-notice"><%= notice %></div><% } %>
     <% if (error) { %><div class="form-errors"><%= error %></div><% } %>
 
     <form method="post" class="stack-form">
       <input type="hidden" name="_csrf" value="<%= csrf %>">
-      <label>Usuário ou e-mail
-        <input name="identity" required autofocus autocomplete="username" value="<%= identity %>">
-      </label>
+      <% if (!privateLogin) { %>
+        <label>Usuário ou e-mail
+          <input name="identity" required autofocus autocomplete="username" value="<%= identity %>">
+        </label>
+      <% } %>
       <label>Senha
-        <input type="password" name="password" required autocomplete="current-password">
+        <input type="password" name="password" required <%= privateLogin ? "autofocus" : "" %> autocomplete="current-password">
       </label>
       <button class="primary" type="submit">Entrar</button>
     </form>
