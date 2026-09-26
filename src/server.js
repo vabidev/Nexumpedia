@@ -56,6 +56,7 @@ const app = express();
 const PgSession = connectPgSimple(session);
 const production = process.env.NODE_ENV === "production";
 const sessionSecret = process.env.SESSION_SECRET || (production ? "" : "nexumpedia-local-development-only");
+const loginPathSecret = process.env.LOGIN_PATH_SECRET || (production ? "" : "nexumpedia-local-login-path-secret");
 const configuredSiteUrl = String(process.env.SITE_URL || "").trim().replace(/\/+$/, "");
 const publicIndexing = String(process.env.PUBLIC_INDEXING || "false").toLowerCase() === "true";
 
@@ -82,6 +83,9 @@ function xmlEscape(value = "") {
 
 if (production && sessionSecret.length < 32) {
   throw new Error("SESSION_SECRET precisa ter pelo menos 32 caracteres em produção.");
+}
+if (production && loginPathSecret.length < 32) {
+  throw new Error("LOGIN_PATH_SECRET precisa ter pelo menos 32 caracteres em produção.");
 }
 
 if (production) {
@@ -266,7 +270,7 @@ function validatePrivatePath(value) {
 }
 
 function hashPrivatePath(privatePath) {
-  return crypto.createHash("sha256").update(privatePath).digest("hex");
+  return crypto.createHmac("sha256", loginPathSecret).update(privatePath).digest("hex");
 }
 
 function generatePrivatePath() {
@@ -1944,8 +1948,8 @@ app.post("/admin/backup", requireAdmin, requireCsrf, async (req, res, next) => {
 
     const payload = {
       format: "nexumpedia-backup",
-      schemaVersion: 1,
-      appVersion: "0.9.0",
+      schemaVersion: 2,
+      appVersion: "0.9.1",
       createdAt: new Date().toISOString(),
       warning: "Contém hashes de senha e mídia. Armazene este arquivo em local privado.",
       data,
