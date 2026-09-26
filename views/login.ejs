@@ -5,6 +5,7 @@
     <h1>Entrar</h1>
     <p class="muted">A área editorial é reservada a administradores e colaboradores autorizados.</p>
 
+    <% if (notice) { %><div class="flash success login-notice"><%= notice %></div><% } %>
     <% if (error) { %><div class="form-errors"><%= error %></div><% } %>
 
     <form method="post" class="stack-form">
