@@ -1,6 +1,6 @@
 {
   "name": "nexumpedia",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "private": true,
   "type": "module",
   "description": "Enciclopédia digital com curadoria editorial.",
@@ -22,6 +22,7 @@
     "helmet": "^8.1.0",
     "multer": "^2.0.2",
     "pg": "^8.16.3",
-    "dotenv": "^17.2.2"
+    "dotenv": "^17.2.2",
+    "express-rate-limit": "^8.1.0"
   }
 }
