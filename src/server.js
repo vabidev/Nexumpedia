@@ -591,7 +591,21 @@ app.get("/painel", requireLogin, async (req, res, next) => {
                 FROM article_categories ac
                 JOIN categories c ON c.id = ac.category_id
                 WHERE ac.article_id = a.id
-              ), '') AS categories
+              ), '') AS categories,
+              (
+                SELECT ar.id
+                FROM article_reviews ar
+                WHERE ar.article_id = a.id
+                ORDER BY ar.created_at DESC, ar.id DESC
+                LIMIT 1
+              ) AS last_review_id,
+              (
+                SELECT ar.status
+                FROM article_reviews ar
+                WHERE ar.article_id = a.id
+                ORDER BY ar.created_at DESC, ar.id DESC
+                LIMIT 1
+              ) AS last_review_status
        FROM articles a
        JOIN users u ON u.id = a.author_id
        WHERE ${where}
@@ -600,9 +614,20 @@ app.get("/painel", requireLogin, async (req, res, next) => {
       params,
     );
 
+    const pendingReviewCount = req.user.role === "admin"
+      ? Number((await pool.query("SELECT COUNT(*)::int AS total FROM article_reviews WHERE status = 'pending'")).rows[0].total)
+      : Number((await pool.query(
+          `SELECT COUNT(*)::int AS total
+           FROM article_reviews ar
+           JOIN articles a ON a.id = ar.article_id
+           WHERE ar.status = 'pending' AND a.author_id = $1`,
+          [req.user.id],
+        )).rows[0].total);
+
     res.render("dashboard", {
       title: "Painel editorial",
       stats,
+      pendingReviewCount,
       articles: articlesResult.rows,
     });
   } catch (error) {
@@ -627,6 +652,7 @@ app.get("/editor", requireLogin, async (req, res, next) => {
       : "";
     const references = article ? await getArticleReferences(article.id) : [];
     const infobox = article ? await getArticleInfobox(article.id) : null;
+    const latestReview = article ? await getLatestReview(article.id) : null;
     const { rows: media } = await pool.query(
       `SELECT id, original_name, alt_text
        FROM media
@@ -640,6 +666,8 @@ app.get("/editor", requireLogin, async (req, res, next) => {
       categories,
       references,
       infobox,
+      latestReview,
+      reviewNote: "",
       media,
       errors: [],
     });
