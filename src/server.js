@@ -20,6 +20,9 @@ import {
   getArticleReferences,
   syncArticleInfobox,
   getArticleInfobox,
+  getActiveReview,
+  getLatestReview,
+  getReviewComments,
 } from "./db.js";
 import {
   canEditArticle,
@@ -96,6 +99,12 @@ app.use(exposeFlash);
 
 app.locals.statusLabel = statusLabel;
 app.locals.formatDate = formatDate;
+app.locals.reviewStatusLabel = (status) => ({
+  pending: "Pendente",
+  approved: "Aprovada",
+  changes_requested: "Ajustes solicitados",
+  cancelled: "Cancelada",
+})[status] || status;
 
 function parseCategories(value = "") {
   return [...new Set(
