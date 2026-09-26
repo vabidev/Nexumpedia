@@ -468,7 +468,7 @@ app.post("/install", authLimiter, requireCsrf, async (req, res, next) => {
   if (!/^[A-Za-z0-9_.-]{3,30}$/.test(username)) errors.push("Usuário inválido.");
   if (displayName.length < 2 || displayName.length > 80) errors.push("Nome de exibição inválido.");
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) errors.push("E-mail inválido.");
-  if (password.length < 10) errors.push("A senha precisa ter pelo menos 10 caracteres.");
+  errors.push(...validateNewPassword(password));
   if (password !== confirm) errors.push("As senhas não coincidem.");
 
   if (errors.length) {
@@ -535,7 +535,14 @@ app.get("/login", async (req, res, next) => {
   try {
     if (!(await hasUsers())) return res.redirect("/install");
     if (req.user) return res.redirect("/painel");
-    res.render("login", { title: "Entrar", error: null, identity: "" });
+    res.render("login", {
+      title: "Entrar",
+      error: null,
+      identity: "",
+      notice: req.query.password === "changed"
+        ? "Senha alterada. Entre novamente com a nova senha."
+        : null,
+    });
   } catch (error) {
     next(error);
   }
@@ -555,6 +562,7 @@ app.post("/login", authLimiter, requireCsrf, async (req, res, next) => {
         title: "Entrar",
         error: "Muitas tentativas. Aguarde alguns minutos.",
         identity,
+        notice: null,
       });
     }
 
@@ -573,6 +581,7 @@ app.post("/login", authLimiter, requireCsrf, async (req, res, next) => {
         title: "Entrar",
         error: "Usuário/e-mail ou senha incorretos.",
         identity,
+        notice: null,
       });
     }
 
@@ -1679,7 +1688,7 @@ app.post("/usuarios", requireAdmin, requireCsrf, async (req, res, next) => {
     if (!/^[A-Za-z0-9_.-]{3,30}$/.test(username)) errors.push("Usuário inválido.");
     if (displayName.length < 2 || displayName.length > 80) errors.push("Nome inválido.");
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) errors.push("E-mail inválido.");
-    if (password.length < 10) errors.push("A senha precisa ter pelo menos 10 caracteres.");
+    errors.push(...validateNewPassword(password));
     if (!["admin", "collaborator"].includes(role)) errors.push("Papel inválido.");
 
     if (errors.length) {
@@ -1830,6 +1839,22 @@ app.use((error, req, res, _next) => {
 });
 
 const port = Number(process.env.PORT || 3000);
-app.listen(port, "0.0.0.0", () => {
+const server = app.listen(port, "0.0.0.0", () => {
   console.log(`Nexumpedia em http://0.0.0.0:${port}`);
 });
+
+async function shutdown(signal) {
+  console.log(`${signal} recebido. Encerrando Nexumpedia com segurança.`);
+  server.close(async () => {
+    try {
+      await pool.end();
+    } finally {
+      process.exit(0);
+    }
+  });
+
+  setTimeout(() => process.exit(1), 10000).unref();
+}
+
+process.once("SIGTERM", () => shutdown("SIGTERM"));
+process.once("SIGINT", () => shutdown("SIGINT"));
