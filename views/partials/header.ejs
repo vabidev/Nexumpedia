@@ -30,6 +30,7 @@
   <nav class="usernav" aria-label="Conta">
     <% if (user) { %>
       <a class="hide-md" href="/painel"><%= user.display_name %></a>
+      <a class="hide-md" href="/conta">Conta</a>
       <form method="post" action="/logout" class="inline-form">
         <input type="hidden" name="_csrf" value="<%= csrf %>">
         <button class="link-button" type="submit">Sair</button>
