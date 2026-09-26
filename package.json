@@ -5,7 +5,7 @@
   "type": "module",
   "description": "Enciclopédia digital com curadoria editorial.",
   "engines": {
-    "node": ">=22"
+    "node": "22.x"
   },
   "scripts": {
     "start": "node src/server.js",
