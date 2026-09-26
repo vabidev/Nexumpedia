@@ -49,7 +49,9 @@ import {
 } from "./auth.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const root = path.join(__dirname, "..");
+const root = process.env.VERCEL
+  ? process.cwd()
+  : path.join(__dirname, "..");
 
 await migrate();
 
