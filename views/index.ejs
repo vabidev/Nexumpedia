@@ -25,7 +25,7 @@
       <section class="card">
         <div class="card-title">Artigo em destaque</div>
         <div class="card-body">
-          <h3 style="margin-top:0"><a href="/artigo/<%= encodeURIComponent(featured.slug) %>"><%= featured.title %></a></h3>
+          <h3 class="featured-title"><a href="/artigo/<%= encodeURIComponent(featured.slug) %>"><%= featured.title %></a></h3>
           <p><%= featured.summary %></p>
           <p class="meta">Publicado por <%= featured.author %> · <%= formatDate(featured.published_at) %></p>
           <a href="/artigo/<%= encodeURIComponent(featured.slug) %>">Ler artigo →</a>
