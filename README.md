@@ -61,6 +61,10 @@ A aplicação não depende do disco do servidor para guardar banco ou mídia. Is
 - validação de assinatura binária em uploads;
 - auditoria automática de dependências de produção;
 - instalação do primeiro administrador;
+- primeiro acesso controlado por /login;
+- URL privada individual de login após o primeiro acesso;
+- rota privada armazenada somente como HMAC-SHA-256;
+- reset administrativo da URL privada;
 - login e sessões;
 - papéis de **administrador** e **colaborador**;
 - painel editorial;
@@ -126,13 +130,13 @@ SITE_URL=https://www.exemplo.com
 PUBLIC_INDEXING=false
 ```
 
-Em produção, `SESSION_SECRET` precisa ter pelo menos 32 caracteres. Use HTTPS no proxy/host da aplicação; cookies de sessão ficam marcados como Secure em produção.
+Em produção, `SESSION_SECRET` e `LOGIN_PATH_SECRET` precisam ter pelo menos 32 caracteres. Use HTTPS no proxy/host da aplicação; cookies de sessão ficam marcados como Secure em produção.
 
 Mantenha `PUBLIC_INDEXING=false` em desenvolvimento e staging. No domínio público oficial, configure `SITE_URL` com a URL canônica e então habilite `PUBLIC_INDEXING=true`.
 
 ## Versão atual
 
-**0.9.0** — qualidade pré-1.0: E2E, acessibilidade, SEO técnico, revisão de segurança e staging reproduzível.
+**0.9.1** — hardening de autenticação com rota privada individual de login após o primeiro acesso.
 
 ## Infoboxes
 
@@ -177,14 +181,15 @@ Se o colaborador voltar a salvar o artigo como rascunho enquanto uma revisão es
 
 ## Fluxo editorial
 
-1. O primeiro administrador é criado em `/install`.
+1. O primeiro administrador é criado em `/install` e define sua URL privada de acesso.
 2. Administradores podem criar outras contas.
-3. Colaboradores criam artigos como rascunho.
-4. O artigo é enviado para uma rodada de revisão.
-5. Autor e revisor podem conversar dentro da rodada.
-6. O administrador aprova/publica ou devolve para ajustes.
-7. Cada decisão editorial gera uma nova versão no histórico.
-8. Colaboradores não alteram diretamente um artigo já publicado.
+3. Uma conta nova usa `/login` somente no primeiro acesso e depois define sua própria URL privada.
+4. Colaboradores criam artigos como rascunho.
+5. O artigo é enviado para uma rodada de revisão.
+6. Autor e revisor podem conversar dentro da rodada.
+7. O administrador aprova/publica ou devolve para ajustes.
+8. Cada decisão editorial gera uma nova versão no histórico.
+9. Colaboradores não alteram diretamente um artigo já publicado.
 
 ## Formatação dos artigos
 
@@ -267,9 +272,28 @@ Já estão aplicados:
 - request IDs propagados no header `X-Request-Id`;
 - logs de erro com request ID;
 - validação de segredo de sessão em produção;
+- URL privada de login por usuário, com HMAC-SHA-256 e pepper separado;
+- /login limitado a contas que ainda estão no primeiro acesso;
+- ausência de link público para autenticação;
 - liveness em `/health/live`;
 - readiness do PostgreSQL em `/health/ready`;
 - encerramento gracioso em SIGTERM/SIGINT.
+
+### Login privado
+
+Depois do primeiro acesso, cada usuário define uma rota privada própria na raiz do site. Exemplo:
+
+```text
+https://exemplo.com/nevoa-azul-7k3f9p2m...
+```
+
+O valor da rota não é salvo em texto puro. O banco armazena somente um HMAC-SHA-256 usando `LOGIN_PATH_SECRET`.
+
+O endpoint `/login` só autentica contas que ainda não configuraram a rota privada. Quando não existe nenhuma conta pendente de primeiro acesso, ele responde 404.
+
+A URL privada reduz varreduras e ataques oportunistas, mas não substitui senha, rate limiting e os demais controles de autenticação.
+
+Se o usuário esquecer a rota, um administrador pode resetá-la na página de usuários. Isso encerra as sessões existentes e reabre o primeiro acesso por `/login`.
 
 ### Senhas
 
@@ -312,7 +336,7 @@ Também existem:
 - `Dockerfile` baseado em Node 22 Alpine;
 - healthcheck do container apontando para `/health/ready`.
 
-O host precisa fornecer `DATABASE_URL`, `SESSION_SECRET`, `NODE_ENV=production` e `PORT` quando exigido pela plataforma.
+O host precisa fornecer `DATABASE_URL`, `SESSION_SECRET`, `LOGIN_PATH_SECRET`, `NODE_ENV=production` e `PORT` quando exigido pela plataforma.
 
 ---
 
