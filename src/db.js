@@ -25,6 +25,15 @@ export const pool = new Pool({
 
 export async function migrate() {
   await pool.query(`
+    CREATE TABLE IF NOT EXISTS user_sessions (
+      sid VARCHAR NOT NULL PRIMARY KEY,
+      sess JSON NOT NULL,
+      expire TIMESTAMP(6) NOT NULL
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_user_sessions_expire
+      ON user_sessions(expire);
+
     CREATE TABLE IF NOT EXISTS users (
       id BIGSERIAL PRIMARY KEY,
       username VARCHAR(30) NOT NULL UNIQUE,
