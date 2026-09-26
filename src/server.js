@@ -770,6 +770,7 @@ app.post("/editor", requireLogin, requireCsrf, async (req, res, next) => {
   const categories = categoryNames.join(", ");
   const references = parseReferences(req.body);
   const infobox = parseInfobox(req.body);
+  const reviewNote = String(req.body.review_note || "").trim();
   const action = String(req.body.action || "save");
   const errors = [];
 
@@ -786,6 +787,7 @@ app.post("/editor", requireLogin, requireCsrf, async (req, res, next) => {
   errors.push(...validateReferences(references, content));
   errors.push(...validateInfobox(infobox));
   errors.push(...await validateInfoboxMedia(infobox));
+  if (reviewNote.length > 1000) errors.push("A nota para revisão pode ter no máximo 1000 caracteres.");
   if (!allowedActions.includes(action)) errors.push("Ação editorial inválida.");
 
   let article = null;
@@ -803,6 +805,8 @@ app.post("/editor", requireLogin, requireCsrf, async (req, res, next) => {
       categories,
       references,
       infobox,
+      latestReview: article ? await getLatestReview(article.id) : null,
+      reviewNote,
       media: (await pool.query(
         "SELECT id, original_name, alt_text FROM media ORDER BY created_at DESC LIMIT 100"
       )).rows,
@@ -855,7 +859,79 @@ app.post("/editor", requireLogin, requireCsrf, async (req, res, next) => {
     await syncArticleReferences(client, articleId, references);
     await syncArticleInfobox(client, articleId, infobox);
     await saveArticleVersion(client, articleId, req.user.id);
+
+    let reviewId = null;
+
+    if (action === "review") {
+      const pendingResult = await client.query(
+        `SELECT id FROM article_reviews
+         WHERE article_id = $1 AND status = 'pending'
+         ORDER BY created_at DESC, id DESC
+         LIMIT 1
+         FOR UPDATE`,
+        [articleId],
+      );
+
+      if (pendingResult.rows[0]) {
+        reviewId = pendingResult.rows[0].id;
+        if (reviewNote) {
+          await client.query(
+            `INSERT INTO article_review_comments (review_id, author_id, body)
+             VALUES ($1,$2,$3)`,
+            [reviewId, req.user.id, reviewNote],
+          );
+        }
+      } else {
+        const reviewResult = await client.query(
+          `INSERT INTO article_reviews
+            (article_id, submitted_by, status, submission_note)
+           VALUES ($1,$2,'pending',$3)
+           RETURNING id`,
+          [articleId, req.user.id, reviewNote],
+        );
+        reviewId = reviewResult.rows[0].id;
+      }
+    } else if (action === "save" && req.user.role !== "admin" && article?.status === "review") {
+      await client.query(
+        `UPDATE article_reviews
+         SET status = 'cancelled', resolved_at = NOW(),
+             decision_note = CASE
+               WHEN decision_note = '' THEN 'Revisão cancelada porque o autor voltou a editar o artigo.'
+               ELSE decision_note
+             END
+         WHERE article_id = $1 AND status = 'pending'`,
+        [articleId],
+      );
+    } else if (action === "publish") {
+      await client.query(
+        `UPDATE article_reviews
+         SET status = 'approved', reviewer_id = $2, resolved_at = NOW(),
+             decision_note = CASE
+               WHEN decision_note = '' THEN 'Publicado diretamente pelo administrador.'
+               ELSE decision_note
+             END
+         WHERE article_id = $1 AND status = 'pending'`,
+        [articleId, req.user.id],
+      );
+    } else if (action === "archive") {
+      await client.query(
+        `UPDATE article_reviews
+         SET status = 'cancelled', reviewer_id = $2, resolved_at = NOW(),
+             decision_note = CASE
+               WHEN decision_note = '' THEN 'Revisão encerrada porque o artigo foi arquivado.'
+               ELSE decision_note
+             END
+         WHERE article_id = $1 AND status = 'pending'`,
+        [articleId, req.user.id],
+      );
+    }
+
     await client.query("COMMIT");
+
+    if (reviewId) {
+      flash(req, "success", "Artigo enviado para revisão editorial.");
+      return res.redirect(`/revisao/${reviewId}`);
+    }
 
     flash(req, "success", `Artigo salvo. Estado atual: ${statusLabel(status)}.`);
     res.redirect(`/editor?id=${articleId}`);
