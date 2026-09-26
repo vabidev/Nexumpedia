@@ -1,6 +1,6 @@
 {
   "name": "nexumpedia",
-  "version": "0.9.4",
+  "version": "0.9.5",
   "private": true,
   "type": "module",
   "description": "Enciclopédia digital com curadoria editorial.",
@@ -13,7 +13,8 @@
     "check": "node --check src/server.js && node --check src/db.js && node --check src/auth.js && node --check src/helpers.js && node scripts/check-views.js && node scripts/check-citations.js && node scripts/check-history.js && node scripts/check-review.js && node scripts/check-security.js && node scripts/check-seo.js && node scripts/check-db.js",
     "e2e": "node scripts/e2e-seed.js && playwright test",
     "e2e:ui": "node scripts/e2e-seed.js && playwright test --ui",
-    "audit:prod": "npm audit --omit=dev --audit-level=high"
+    "audit:prod": "npm audit --omit=dev --audit-level=high",
+    "build": "next build"
   },
   "dependencies": {
     "bcryptjs": "^3.0.2",
@@ -26,7 +27,10 @@
     "multer": "^2.0.2",
     "pg": "^8.16.3",
     "dotenv": "^17.2.2",
-    "express-rate-limit": "^8.1.0"
+    "express-rate-limit": "^8.1.0",
+    "next": "^15.5.4",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1"
   },
   "devDependencies": {
     "@playwright/test": "^1.63.0",
