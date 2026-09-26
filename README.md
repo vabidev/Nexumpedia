@@ -139,7 +139,7 @@ Mantenha `PUBLIC_INDEXING=false` em desenvolvimento e staging. No domínio públ
 
 ## Versão atual
 
-**0.9.2** — correção visual mobile: nova marca adaptativa, drawer lateral animado e transição suave de tema.
+**0.9.3** — identidade visual final do header: logo aprovada em variantes clara/escura, wordmark em HTML e remoção do artefato cinza do skip-link.
 
 ## Infoboxes
 

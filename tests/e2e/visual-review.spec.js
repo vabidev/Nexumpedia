@@ -7,10 +7,23 @@ test("captura visual da interface para revisão humana", async ({ page }) => {
   await page.setViewportSize({ width: 1365, height: 900 });
   await page.goto("/");
   await expect(page.getByRole("heading", { name: "Bem-vindo à Nexumpedia" })).toBeVisible();
+  const lightLogo = page.locator(".brand-symbol-light");
+  const darkLogo = page.locator(".brand-symbol-dark");
+  const brandCopy = page.locator(".brand-copy");
+  await expect(lightLogo).toBeVisible();
+  await expect(darkLogo).toBeHidden();
+  await expect(brandCopy).toBeVisible();
+
+  expect(await lightLogo.evaluate((img) => img.naturalWidth)).toBeGreaterThan(0);
+  expect(await lightLogo.evaluate((img) => img.naturalHeight)).toBeGreaterThan(0);
+  expect(await darkLogo.evaluate((img) => img.naturalWidth)).toBeGreaterThan(0);
+  expect(await darkLogo.evaluate((img) => img.naturalHeight)).toBeGreaterThan(0);
   await page.screenshot({ path: "visual-review/desktop-light.png", fullPage: true });
 
   await page.locator("[data-theme-toggle]").click();
   await page.waitForTimeout(320);
+  await expect(lightLogo).toBeHidden();
+  await expect(darkLogo).toBeVisible();
   await page.screenshot({ path: "visual-review/desktop-dark.png", fullPage: true });
 
   await page.setViewportSize({ width: 390, height: 844 });
@@ -19,6 +32,14 @@ test("captura visual da interface para revisão humana", async ({ page }) => {
     localStorage.setItem("nexumpedia-theme", "light");
   });
   await page.reload();
+
+  await expect(page.locator(".brand-symbol-light")).toBeVisible();
+  await expect(page.locator(".brand-symbol-dark")).toBeHidden();
+  await expect(page.locator(".brand-copy")).toBeHidden();
+  const mobileLogoBox = await page.locator(".brand-symbol").boundingBox();
+  expect(mobileLogoBox).not.toBeNull();
+  expect(mobileLogoBox.width).toBeLessThanOrEqual(46);
+  expect(mobileLogoBox.height).toBeLessThanOrEqual(44);
 
   const skipLink = page.locator(".skip-link");
   const skipBox = await skipLink.boundingBox();
@@ -60,9 +81,6 @@ test("captura visual da interface para revisão humana", async ({ page }) => {
   await expect(toggle).toHaveAttribute("aria-expanded", "false");
   await page.waitForTimeout(280);
 
-  const mark = page.locator(".brand .brand-mark-n");
-  const lightStroke = await mark.evaluate((element) => getComputedStyle(element).stroke);
-
   const themeToggle = page.locator("[data-theme-toggle]");
   await themeToggle.click();
   await expect(page.locator("html")).toHaveClass(/theme-changing/);
@@ -70,8 +88,8 @@ test("captura visual da interface para revisão humana", async ({ page }) => {
   expect(themeAnimations).toBeGreaterThan(0);
   await page.waitForTimeout(320);
 
-  const darkStroke = await mark.evaluate((element) => getComputedStyle(element).stroke);
-  expect(darkStroke).not.toBe(lightStroke);
+  await expect(page.locator(".brand-symbol-light")).toBeHidden();
+  await expect(page.locator(".brand-symbol-dark")).toBeVisible();
   await page.screenshot({ path: "visual-review/mobile-dark.png", fullPage: false });
 
   await toggle.click();
