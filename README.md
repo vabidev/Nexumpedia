@@ -52,6 +52,14 @@ A aplicação não depende do disco do servidor para guardar banco ou mídia. Is
 - health checks de liveness e readiness;
 - encerramento gracioso em SIGTERM/SIGINT;
 - Dockerfile e Procfile para deploy;
+- Playwright E2E no Chromium;
+- axe/WCAG automatizado no CI;
+- canonical, Open Graph e JSON-LD;
+- robots.txt e sitemap.xml dinâmicos;
+- staging isolado via Render Blueprint;
+- proteção noindex para staging;
+- validação de assinatura binária em uploads;
+- auditoria automática de dependências de produção;
 - instalação do primeiro administrador;
 - login e sessões;
 - papéis de **administrador** e **colaborador**;
@@ -114,13 +122,17 @@ NODE_ENV=development
 PORT=3000
 DATABASE_URL=postgresql://nexumpedia:nexumpedia@127.0.0.1:5432/nexumpedia
 SESSION_SECRET=uma-chave-longa-e-aleatoria
+SITE_URL=https://www.exemplo.com
+PUBLIC_INDEXING=false
 ```
 
 Em produção, `SESSION_SECRET` precisa ter pelo menos 32 caracteres. Use HTTPS no proxy/host da aplicação; cookies de sessão ficam marcados como Secure em produção.
 
+Mantenha `PUBLIC_INDEXING=false` em desenvolvimento e staging. No domínio público oficial, configure `SITE_URL` com a URL canônica e então habilite `PUBLIC_INDEXING=true`.
+
 ## Versão atual
 
-**0.8.0** — preparação para produção: segurança HTTP, senhas, backup, health checks e deploy portável.
+**0.9.0** — qualidade pré-1.0: E2E, acessibilidade, SEO técnico, revisão de segurança e staging reproduzível.
 
 ## Infoboxes
 
@@ -219,9 +231,15 @@ A biblioteca de mídia gera o código da imagem automaticamente.
 - `scripts/check-citations.js` — testes do renderizador de citações;
 - `scripts/check-history.js` — testes de diff e snapshots históricos;
 - `scripts/check-review.js` — valida uma rodada editorial completa no PostgreSQL;
-- `scripts/check-security.js` — sobe a aplicação e valida CSP, headers, request IDs, health checks e ausência de JavaScript inline;
+- `scripts/check-security.js` — sobe a aplicação e valida CSP, headers, request IDs, health checks e ausência de JavaScript/estilo inline;
+- `scripts/check-seo.js` — valida canonical, JSON-LD, robots e sitemap no modo indexável;
+- `scripts/e2e-seed.js` — prepara estado isolado para o E2E;
+- `tests/e2e/` — fluxos Playwright, acessibilidade com axe e testes de segurança;
 - `scripts/check-db.js` — sobe o schema e valida as migrações PostgreSQL no CI;
-- `docker-compose.yml` — PostgreSQL para desenvolvimento local.
+- `docker-compose.yml` — PostgreSQL para desenvolvimento local;
+- `render.yaml` — staging Node.js + PostgreSQL;
+- `docs/STAGING.md` — procedimento do staging;
+- `docs/SECURITY_REVIEW_0.9.md` — revisão de segurança desta versão.
 
 ## Hospedagem
 
@@ -299,3 +317,30 @@ O host precisa fornecer `DATABASE_URL`, `SESSION_SECRET`, `NODE_ENV=production` 
 ---
 
 Nexumpedia — Conhecimento em conexão.
+
+
+## Testes E2E e acessibilidade
+
+Para executar localmente, com o PostgreSQL configurado:
+
+```bash
+npm install
+npx playwright install chromium
+npm run e2e
+```
+
+O E2E cobre leitura pública, criação de colaborador, criação de artigo, envio para revisão, aprovação/publicação e rejeição de arquivo de imagem falsificado.
+
+O CI também roda axe nas páginas principal, artigo público e login para detectar automaticamente problemas cobertos pelas regras WCAG A/AA. Testes automatizados não substituem revisão manual de acessibilidade.
+
+## SEO
+
+Quando `PUBLIC_INDEXING=true`, a Nexumpedia disponibiliza canonical URLs, Open Graph, JSON-LD, `robots.txt` e `sitemap.xml`.
+
+Quando `PUBLIC_INDEXING=false`, páginas recebem `noindex,nofollow`, o robots bloqueia crawling e o sitemap não é exposto. O JSON-LD continua presente para permitir validação no staging.
+
+## Staging
+
+O arquivo `render.yaml` define o ambiente `nexumpedia-staging` e seu PostgreSQL isolado. O deploy automático usa `checksPass`, portanto uma alteração só é enviada ao staging depois que o GitHub Actions termina com sucesso.
+
+Consulte `docs/STAGING.md` antes do primeiro deploy.
