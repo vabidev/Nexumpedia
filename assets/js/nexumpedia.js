@@ -1,32 +1,119 @@
 (() => {
   const root = document.documentElement;
-  const savedTheme = localStorage.getItem("nexumpedia-theme");
-  if (savedTheme === "dark") root.dataset.theme = "dark";
+  const body = document.body;
+  const topbar = document.querySelector(".topbar");
+  const sidebar = document.querySelector("#navegacao-lateral");
+  const menuButtons = [...document.querySelectorAll("[data-menu-toggle]")];
+  const backdrop = document.querySelector("[data-menu-backdrop]");
+  const mobileQuery = window.matchMedia("(max-width: 820px)");
+  let themeTimer = null;
+
+  function syncThemeButton() {
+    const dark = root.dataset.theme === "dark";
+    document.querySelectorAll("[data-theme-toggle]").forEach(btn => {
+      btn.setAttribute("aria-pressed", dark ? "true" : "false");
+      btn.setAttribute("aria-label", dark ? "Usar tema claro" : "Usar tema escuro");
+    });
+  }
+
+  syncThemeButton();
 
   document.querySelectorAll("[data-theme-toggle]").forEach(btn => {
-    btn.setAttribute("aria-pressed", root.dataset.theme === "dark" ? "true" : "false");
     btn.addEventListener("click", () => {
-      const dark = root.dataset.theme === "dark";
-      if (dark) {
+      root.classList.add("theme-changing");
+
+      if (root.dataset.theme === "dark") {
         delete root.dataset.theme;
         localStorage.setItem("nexumpedia-theme", "light");
       } else {
         root.dataset.theme = "dark";
         localStorage.setItem("nexumpedia-theme", "dark");
       }
-      btn.setAttribute("aria-pressed", root.dataset.theme === "dark" ? "true" : "false");
+
+      syncThemeButton();
+      window.clearTimeout(themeTimer);
+      themeTimer = window.setTimeout(() => {
+        root.classList.remove("theme-changing");
+      }, 300);
     });
   });
 
-  document.querySelectorAll("[data-menu-toggle]").forEach(btn => {
-    btn.addEventListener("click", () => {
-      const nav = document.querySelector(".sidebar");
-      if (nav) {
-        nav.classList.toggle("open");
-        btn.setAttribute("aria-expanded", nav.classList.contains("open") ? "true" : "false");
+  function updateDrawerTop() {
+    if (!topbar) return;
+    const bottom = Math.max(0, Math.round(topbar.getBoundingClientRect().bottom));
+    root.style.setProperty("--drawer-top", bottom + "px");
+  }
+
+  function setMenuOpen(open, restoreFocus = false) {
+    if (!sidebar) return;
+
+    updateDrawerTop();
+    sidebar.classList.toggle("open", open);
+    backdrop?.classList.toggle("open", open);
+    body.classList.toggle("menu-open", open);
+
+    menuButtons.forEach(btn => {
+      btn.setAttribute("aria-expanded", open ? "true" : "false");
+      btn.setAttribute("aria-label", open ? "Fechar menu" : "Abrir menu");
+    });
+
+    if (mobileQuery.matches) {
+      sidebar.setAttribute("aria-hidden", open ? "false" : "true");
+    } else {
+      sidebar.removeAttribute("aria-hidden");
+    }
+
+    if (!open && restoreFocus) {
+      menuButtons[0]?.focus({ preventScroll: true });
+    }
+  }
+
+  if (sidebar) {
+    updateDrawerTop();
+    if (mobileQuery.matches) sidebar.setAttribute("aria-hidden", "true");
+
+    menuButtons.forEach(btn => {
+      btn.addEventListener("click", () => {
+        setMenuOpen(!sidebar.classList.contains("open"));
+      });
+    });
+
+    backdrop?.addEventListener("click", () => setMenuOpen(false, true));
+
+    sidebar.querySelectorAll("a").forEach(link => {
+      link.addEventListener("click", () => {
+        if (mobileQuery.matches) setMenuOpen(false);
+      });
+    });
+
+    document.addEventListener("keydown", event => {
+      if (event.key === "Escape" && sidebar.classList.contains("open")) {
+        setMenuOpen(false, true);
       }
     });
-  });
+
+    const handleViewportChange = () => {
+      updateDrawerTop();
+      if (!mobileQuery.matches) {
+        sidebar.classList.remove("open");
+        backdrop?.classList.remove("open");
+        body.classList.remove("menu-open");
+        sidebar.removeAttribute("aria-hidden");
+        menuButtons.forEach(btn => {
+          btn.setAttribute("aria-expanded", "false");
+          btn.setAttribute("aria-label", "Abrir menu");
+        });
+      } else if (!sidebar.classList.contains("open")) {
+        sidebar.setAttribute("aria-hidden", "true");
+      }
+    };
+
+    window.addEventListener("resize", handleViewportChange, { passive: true });
+    window.addEventListener("orientationchange", handleViewportChange);
+  } else {
+    menuButtons.forEach(btn => { btn.hidden = true; });
+    if (backdrop) backdrop.hidden = true;
+  }
 
   const referenceList = document.querySelector("[data-reference-list]");
   const referenceTemplate = document.querySelector("#reference-row-template");
