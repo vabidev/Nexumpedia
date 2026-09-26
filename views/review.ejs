@@ -1,0 +1,151 @@
+<%- include("partials/header", { title, showSearch: false }) %>
+<main class="review-shell">
+  <div class="editor-topline">
+    <div>
+      <div class="meta">Rodada de revisão #<%= review.id %></div>
+      <h1><%= review.article_title %></h1>
+      <div class="review-meta-line">
+        <span class="badge <%= review.status === "approved" ? "good" : "" %>"><%= reviewStatusLabel(review.status) %></span>
+        <span>Enviado por <strong><%= review.submitted_by_name %></strong> em <%= formatDate(review.created_at) %></span>
+        <% if (review.reviewer_name) { %><span>Revisor: <strong><%= review.reviewer_name %></strong></span><% } %>
+      </div>
+    </div>
+    <div class="button-row">
+      <% if (user.role === "admin") { %><a class="secondary" href="/revisoes">← Fila</a><% } else { %><a class="secondary" href="/painel">← Painel</a><% } %>
+      <a class="secondary" href="/historico/<%= encodeURIComponent(review.article_slug) %>">Histórico</a>
+      <% if (user.role === "admin" || Number(review.article_author_id) === Number(user.id)) { %>
+        <a class="secondary" href="/editor?id=<%= review.article_id %>">Editor</a>
+      <% } %>
+    </div>
+  </div>
+
+  <% if (review.submission_note) { %>
+    <div class="review-submission-note">
+      <strong>Nota do envio</strong>
+      <p><%= review.submission_note %></p>
+    </div>
+  <% } %>
+
+  <% if (review.status !== "pending" && review.decision_note) { %>
+    <div class="review-decision <%= review.status === "approved" ? "approved" : "changes" %>">
+      <strong><%= review.status === "approved" ? "Parecer da aprovação" : "Ajustes solicitados" %></strong>
+      <p><%= review.decision_note %></p>
+      <% if (review.resolved_at) { %><span class="meta">Encerrada em <%= formatDate(review.resolved_at) %>.</span><% } %>
+    </div>
+  <% } %>
+
+  <div class="review-layout">
+    <section class="review-article">
+      <header class="article-header">
+        <div class="article-kicker">Conteúdo atual submetido à revisão.</div>
+        <h1><%= review.article_title %></h1>
+      </header>
+
+      <% if (infobox) { %>
+        <aside class="infobox">
+          <div class="infobox-title"><%= infobox.title || review.article_title %></div>
+          <% if (infobox.media_id) { %>
+            <div class="infobox-media">
+              <img src="/media/<%= infobox.media_id %>" alt="<%= infobox.media_alt || infobox.caption || infobox.media_name || review.article_title %>">
+              <% if (infobox.caption) { %><div class="infobox-caption"><%= infobox.caption %></div><% } %>
+            </div>
+          <% } %>
+          <% if (infobox.fields.length) { %>
+            <dl>
+              <% for (const field of infobox.fields) { %><dt><%= field.label %></dt><dd><%= field.value %></dd><% } %>
+            </dl>
+          <% } %>
+        </aside>
+      <% } %>
+
+      <% if (review.article_summary) { %><p class="lead"><%= review.article_summary %></p><% } %>
+
+      <% if (headings.length || references.length) { %>
+        <nav class="inline-toc" aria-label="Índice">
+          <strong>Índice</strong>
+          <ol>
+            <% for (const heading of headings) { %><li><a href="#<%= heading.id %>"><%= heading.title %></a></li><% } %>
+            <% if (references.length) { %><li><a href="#referencias">Referências</a></li><% } %>
+          </ol>
+        </nav>
+      <% } %>
+
+      <div class="article-content"><%- renderedContent %></div>
+
+      <% if (references.length) { %>
+        <section class="references-section">
+          <h2 id="referencias">Referências</h2>
+          <ol class="references-list">
+            <% for (const ref of references) { %>
+              <li id="ref-<%= ref.citation_key %>">
+                <% if (ref.author) { %><span class="reference-author"><%= ref.author %>.</span> <% } %>
+                <% if (ref.url) { %><a href="<%= ref.url %>" rel="noopener noreferrer"><cite><%= ref.title %></cite></a>.<% } else { %><cite><%= ref.title %></cite>.<% } %>
+                <% if (ref.publisher) { %> <%= ref.publisher %>.<% } %>
+                <% if (ref.published_date) { %> <%= ref.published_date %>.<% } %>
+                <% if (ref.note) { %> <%= ref.note %>.<% } %>
+                <% if (ref.accessed_date) { %> Acesso em <%= ref.accessed_date %>.<% } %>
+              </li>
+            <% } %>
+          </ol>
+        </section>
+      <% } %>
+
+      <% if (categories.length) { %>
+        <nav class="article-categories" aria-label="Categorias">
+          <span>Categorias:</span>
+          <% for (const category of categories) { %><span class="preview-category"><%= category.name %></span><% } %>
+        </nav>
+      <% } %>
+    </section>
+
+    <aside class="review-panel">
+      <section class="review-conversation">
+        <h2>Conversa da revisão</h2>
+
+        <% if (!comments.length) { %>
+          <p class="meta">Nenhum comentário nesta rodada.</p>
+        <% } else { %>
+          <div class="review-comments">
+            <% for (const comment of comments) { %>
+              <article class="review-comment">
+                <div class="review-comment-head">
+                  <strong><%= comment.author_name %></strong>
+                  <span class="badge"><%= comment.author_role === "admin" ? "Admin" : "Colaborador" %></span>
+                  <time><%= formatDate(comment.created_at) %></time>
+                </div>
+                <p><%= comment.body %></p>
+              </article>
+            <% } %>
+          </div>
+        <% } %>
+
+        <% if (review.status === "pending") { %>
+          <form method="post" action="/revisao/<%= review.id %>/comentar" class="stack-form review-comment-form">
+            <input type="hidden" name="_csrf" value="<%= csrf %>">
+            <label>Adicionar comentário
+              <textarea name="body" rows="4" maxlength="2000" required placeholder="Pergunta, observação ou resposta..."></textarea>
+            </label>
+            <button class="secondary" type="submit">Enviar comentário</button>
+          </form>
+        <% } %>
+      </section>
+
+      <% if (user.role === "admin" && review.status === "pending") { %>
+        <section class="review-decision-panel">
+          <h2>Decisão editorial</h2>
+          <form method="post" action="/revisao/<%= review.id %>/decisao" class="stack-form">
+            <input type="hidden" name="_csrf" value="<%= csrf %>">
+            <label>Parecer
+              <textarea name="decision_note" rows="5" maxlength="2000" placeholder="Opcional ao aprovar; obrigatório ao pedir ajustes."></textarea>
+            </label>
+            <div class="button-row">
+              <button class="primary" type="submit" name="action" value="approve">Aprovar e publicar</button>
+              <button class="danger" type="submit" name="action" value="changes">Pedir ajustes</button>
+            </div>
+          </form>
+        </section>
+      <% } %>
+    </aside>
+  </div>
+</main>
+<%- include("partials/footer") %>
