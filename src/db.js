@@ -456,3 +456,20 @@ export async function getReviewComments(reviewId) {
   );
   return rows;
 }
+
+
+export async function getLatestReview(articleId) {
+  const { rows } = await pool.query(
+    `SELECT ar.*,
+            submitter.display_name AS submitted_by_name,
+            reviewer.display_name AS reviewer_name
+     FROM article_reviews ar
+     JOIN users submitter ON submitter.id = ar.submitted_by
+     LEFT JOIN users reviewer ON reviewer.id = ar.reviewer_id
+     WHERE ar.article_id = $1
+     ORDER BY ar.created_at DESC, ar.id DESC
+     LIMIT 1`,
+    [articleId],
+  );
+  return rows[0] || null;
+}
