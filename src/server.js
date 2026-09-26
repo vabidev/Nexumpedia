@@ -1985,10 +1985,12 @@ app.get("/health", async (_req, res) => {
 });
 
 app.use((_req, res) => {
+  res.locals.seo.robots = "noindex,nofollow";
   res.status(404).render("404", { title: "Página não encontrada" });
 });
 
 app.use((error, req, res, _next) => {
+  res.locals.seo.robots = "noindex,nofollow";
   console.error({
     requestId: req.requestId,
     method: req.method,
