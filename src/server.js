@@ -131,8 +131,16 @@ app.use(helmet({
 app.use(compression());
 app.use(express.urlencoded({ extended: false, limit: "1mb" }));
 app.use("/assets", express.static(path.join(root, "assets"), {
-  maxAge: production ? "7d" : 0,
-  immutable: production,
+  maxAge: production ? "1h" : 0,
+  immutable: false,
+  etag: true,
+  lastModified: true,
+  setHeaders(res) {
+    res.setHeader(
+      "Cache-Control",
+      production ? "public, max-age=3600, must-revalidate" : "no-cache"
+    );
+  },
 }));
 
 const globalLimiter = rateLimit({

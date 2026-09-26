@@ -7,23 +7,25 @@ test("captura visual da interface para revisão humana", async ({ page }) => {
   await page.setViewportSize({ width: 1365, height: 900 });
   await page.goto("/");
   await expect(page.getByRole("heading", { name: "Bem-vindo à Nexumpedia" })).toBeVisible();
-  const lightLogo = page.locator(".brand-symbol-light");
-  const darkLogo = page.locator(".brand-symbol-dark");
+  const brandSymbol = page.locator(".brand-symbol");
   const brandCopy = page.locator(".brand-copy");
-  await expect(lightLogo).toBeVisible();
-  await expect(darkLogo).toBeHidden();
+  await expect(brandSymbol).toBeVisible();
   await expect(brandCopy).toBeVisible();
+  const lightLogo = await brandSymbol.evaluate((element) => getComputedStyle(element).backgroundImage);
+  expect(lightLogo).toContain("nexumpedia-logo-light.png");
 
-  expect(await lightLogo.evaluate((img) => img.naturalWidth)).toBeGreaterThan(0);
-  expect(await lightLogo.evaluate((img) => img.naturalHeight)).toBeGreaterThan(0);
-  expect(await darkLogo.evaluate((img) => img.naturalWidth)).toBeGreaterThan(0);
-  expect(await darkLogo.evaluate((img) => img.naturalHeight)).toBeGreaterThan(0);
+  const themeButtonIcon = page.locator("[data-theme-toggle] svg");
+  await expect(themeButtonIcon).toBeVisible();
+  const themeIconBox = await themeButtonIcon.boundingBox();
+  expect(themeIconBox?.width || 0).toBeGreaterThan(0);
+  expect(themeIconBox?.height || 0).toBeGreaterThan(0);
+
   await page.screenshot({ path: "visual-review/desktop-light.png", fullPage: true });
 
   await page.locator("[data-theme-toggle]").click();
   await page.waitForTimeout(320);
-  await expect(lightLogo).toBeHidden();
-  await expect(darkLogo).toBeVisible();
+  const darkLogo = await brandSymbol.evaluate((element) => getComputedStyle(element).backgroundImage);
+  expect(darkLogo).toContain("nexumpedia-logo-dark.png");
   await page.screenshot({ path: "visual-review/desktop-dark.png", fullPage: true });
 
   await page.setViewportSize({ width: 390, height: 844 });
@@ -33,9 +35,10 @@ test("captura visual da interface para revisão humana", async ({ page }) => {
   });
   await page.reload();
 
-  await expect(page.locator(".brand-symbol-light")).toBeVisible();
-  await expect(page.locator(".brand-symbol-dark")).toBeHidden();
+  await expect(page.locator(".brand-symbol")).toBeVisible();
   await expect(page.locator(".brand-copy")).toBeHidden();
+  const mobileLightLogo = await page.locator(".brand-symbol").evaluate((element) => getComputedStyle(element).backgroundImage);
+  expect(mobileLightLogo).toContain("nexumpedia-logo-light.png");
   const mobileLogoBox = await page.locator(".brand-symbol").boundingBox();
   expect(mobileLogoBox).not.toBeNull();
   expect(mobileLogoBox.width).toBeLessThanOrEqual(46);
@@ -44,8 +47,12 @@ test("captura visual da interface para revisão humana", async ({ page }) => {
   const skipLink = page.locator(".skip-link");
   const skipBox = await skipLink.boundingBox();
   expect(skipBox).not.toBeNull();
-  expect(skipBox.width).toBeLessThanOrEqual(1);
-  expect(skipBox.height).toBeLessThanOrEqual(1);
+  expect(skipBox.x + skipBox.width).toBeLessThan(0);
+
+  const mobileThemeIcon = page.locator("[data-theme-toggle] svg");
+  const mobileMenuIcon = page.locator("[data-menu-toggle] svg");
+  await expect(mobileThemeIcon).toBeVisible();
+  await expect(mobileMenuIcon).toBeVisible();
 
   await page.screenshot({ path: "visual-review/mobile-light.png", fullPage: false });
 
@@ -88,8 +95,8 @@ test("captura visual da interface para revisão humana", async ({ page }) => {
   expect(themeAnimations).toBeGreaterThan(0);
   await page.waitForTimeout(320);
 
-  await expect(page.locator(".brand-symbol-light")).toBeHidden();
-  await expect(page.locator(".brand-symbol-dark")).toBeVisible();
+  const mobileDarkLogo = await page.locator(".brand-symbol").evaluate((element) => getComputedStyle(element).backgroundImage);
+  expect(mobileDarkLogo).toContain("nexumpedia-logo-dark.png");
   await page.screenshot({ path: "visual-review/mobile-dark.png", fullPage: false });
 
   await toggle.click();

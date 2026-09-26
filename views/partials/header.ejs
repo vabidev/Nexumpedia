@@ -12,9 +12,9 @@
   <meta property="og:description" content="<%= seo?.description || "Nexumpedia, uma enciclopédia digital de conteúdo editorial revisado." %>">
   <meta property="og:type" content="<%= seo?.type || "website" %>">
   <% if (seo?.canonical) { %><meta property="og:url" content="<%= seo.canonical %>"><% } %>
-  <link rel="icon" href="/assets/img/nexumpedia-mark.svg">
-  <script src="/assets/js/theme-init.js"></script>
-  <link rel="stylesheet" href="/assets/css/nexumpedia.css">
+  <link rel="icon" href="/assets/img/nexumpedia-mark.svg?v=0.9.4">
+  <script src="/assets/js/theme-init.js?v=0.9.4"></script>
+  <link rel="stylesheet" href="/assets/css/nexumpedia.css?v=0.9.4">
   <% if (seo?.jsonLd) { %>
     <script type="application/ld+json" nonce="<%= cspNonce %>"><%- JSON.stringify(seo.jsonLd).replace(/</g, "\\u003c") %></script>
   <% } %>
@@ -23,10 +23,7 @@
 <a class="skip-link" href="#conteudo-principal">Pular para o conteúdo</a>
 <header class="topbar">
   <a class="brand" href="/" aria-label="Nexumpedia, página principal">
-    <span class="brand-symbol" aria-hidden="true">
-      <img class="brand-symbol-image brand-symbol-light" src="/assets/img/nexumpedia-logo-light.png" alt="">
-      <img class="brand-symbol-image brand-symbol-dark" src="/assets/img/nexumpedia-logo-dark.png" alt="">
-    </span>
+    <span class="brand-symbol" aria-hidden="true"></span>
     <span class="brand-copy">
       <span class="brand-name">Nexumpedia</span>
       <span class="brand-tagline">CONHECIMENTO EM CONEXÃO</span>
@@ -51,9 +48,21 @@
         <button class="link-button" type="submit">Sair</button>
       </form>
     <% } %>
-    <button class="icon-btn theme-toggle" type="button" data-theme-toggle aria-label="Usar tema escuro" aria-pressed="false"><span class="theme-glyph" aria-hidden="true"></span></button>
+    <button class="icon-btn theme-toggle" type="button" data-theme-toggle aria-label="Usar tema escuro" aria-pressed="false">
+      <svg class="theme-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+        <path class="theme-icon-moon" d="M20.1 15.2A8.2 8.2 0 0 1 8.8 3.9a8.4 8.4 0 1 0 11.3 11.3Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+        <g class="theme-icon-sun" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <circle cx="12" cy="12" r="4"/>
+          <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>
+        </g>
+      </svg>
+    </button>
     <button class="icon-btn mobile-menu" type="button" data-menu-toggle aria-label="Abrir menu" aria-expanded="false" aria-controls="navegacao-lateral">
-      <span class="hamburger" aria-hidden="true"><span></span><span></span><span></span></span>
+      <svg class="menu-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+        <line x1="4" y1="6" x2="20" y2="6"/>
+        <line x1="4" y1="12" x2="20" y2="12"/>
+        <line x1="4" y1="18" x2="20" y2="18"/>
+      </svg>
     </button>
   </nav>
 </header>
