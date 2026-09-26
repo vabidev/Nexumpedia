@@ -44,13 +44,14 @@
       <div class="card-body no-pad">
         <div class="table-wrap borderless">
           <table>
-            <thead><tr><th>Nome</th><th>Papel</th><th>Estado</th><th></th></tr></thead>
+            <thead><tr><th>Nome</th><th>Papel</th><th>Estado</th><th>Acesso</th><th></th></tr></thead>
             <tbody>
               <% for (const account of users) { %>
                 <tr>
                   <td><strong><%= account.display_name %></strong><br><span class="meta">@<%= account.username %> · <%= account.email %></span></td>
                   <td><%= account.role === "admin" ? "Administrador" : "Colaborador" %></td>
                   <td><span class="badge <%= account.active ? "good" : "" %>"><%= account.active ? "Ativo" : "Desativado" %></span></td>
+                  <td><span class="badge <%= account.login_path_configured ? "good" : "" %>"><%= account.login_path_configured ? "URL privada" : "Primeiro acesso" %></span></td>
                   <td>
                     <% if (Number(account.id) !== Number(user.id)) { %>
                       <form method="post" class="inline-form">
@@ -60,6 +61,14 @@
                         <button class="link-button"><%= account.active ? "Desativar" : "Ativar" %></button>
                       </form>
                       · <a href="/usuarios/<%= account.id %>/senha">Redefinir senha</a>
+                      <% if (account.login_path_configured) { %>
+                        · <form method="post" class="inline-form">
+                          <input type="hidden" name="_csrf" value="<%= csrf %>">
+                          <input type="hidden" name="action" value="reset_login_path">
+                          <input type="hidden" name="user_id" value="<%= account.id %>">
+                          <button class="link-button danger-text" type="submit">Resetar URL privada</button>
+                        </form>
+                      <% } %>
                     <% } %>
                   </td>
                 </tr>
