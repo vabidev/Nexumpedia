@@ -943,6 +943,239 @@ app.post("/editor", requireLogin, requireCsrf, async (req, res, next) => {
   }
 });
 
+app.get("/revisoes", requireAdmin, async (_req, res, next) => {
+  try {
+    const { rows: pending } = await pool.query(
+      `SELECT ar.id, ar.status, ar.submission_note, ar.created_at,
+              a.id AS article_id, a.title AS article_title, a.slug AS article_slug,
+              submitter.display_name AS submitted_by_name
+       FROM article_reviews ar
+       JOIN articles a ON a.id = ar.article_id
+       JOIN users submitter ON submitter.id = ar.submitted_by
+       WHERE ar.status = 'pending'
+       ORDER BY ar.created_at ASC, ar.id ASC`,
+    );
+
+    const { rows: recent } = await pool.query(
+      `SELECT ar.id, ar.status, ar.decision_note, ar.created_at, ar.resolved_at,
+              a.title AS article_title, a.slug AS article_slug,
+              submitter.display_name AS submitted_by_name,
+              reviewer.display_name AS reviewer_name
+       FROM article_reviews ar
+       JOIN articles a ON a.id = ar.article_id
+       JOIN users submitter ON submitter.id = ar.submitted_by
+       LEFT JOIN users reviewer ON reviewer.id = ar.reviewer_id
+       WHERE ar.status <> 'pending'
+       ORDER BY COALESCE(ar.resolved_at, ar.created_at) DESC
+       LIMIT 30`,
+    );
+
+    res.render("reviews", {
+      title: "Fila de revisão",
+      pending,
+      recent,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.get("/revisao/:id", requireLogin, async (req, res, next) => {
+  try {
+    const reviewId = Number(req.params.id);
+    if (!Number.isInteger(reviewId) || reviewId < 1) {
+      return res.status(404).render("404", { title: "Revisão não encontrada" });
+    }
+
+    const { rows } = await pool.query(
+      `SELECT ar.*,
+              a.id AS article_id, a.title AS article_title, a.slug AS article_slug,
+              a.summary AS article_summary, a.content AS article_content,
+              a.status AS article_status, a.author_id AS article_author_id,
+              a.updated_at AS article_updated_at,
+              submitter.display_name AS submitted_by_name,
+              reviewer.display_name AS reviewer_name
+       FROM article_reviews ar
+       JOIN articles a ON a.id = ar.article_id
+       JOIN users submitter ON submitter.id = ar.submitted_by
+       LEFT JOIN users reviewer ON reviewer.id = ar.reviewer_id
+       WHERE ar.id = $1
+       LIMIT 1`,
+      [reviewId],
+    );
+
+    const review = rows[0];
+    if (!review) return res.status(404).render("404", { title: "Revisão não encontrada" });
+
+    const allowed = req.user.role === "admin"
+      || Number(review.article_author_id) === Number(req.user.id);
+    if (!allowed) return res.status(403).send("Sem permissão para acessar esta revisão.");
+
+    const categories = await getArticleCategories(review.article_id);
+    const references = await getArticleReferences(review.article_id);
+    const infobox = await getArticleInfobox(review.article_id);
+    const comments = await getReviewComments(review.id);
+
+    res.render("review", {
+      title: `Revisão: ${review.article_title}`,
+      review,
+      categories,
+      references,
+      infobox,
+      comments,
+      headings: headingsFromContent(review.article_content),
+      renderedContent: renderMarkup(review.article_content, references),
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post("/revisao/:id/comentar", requireLogin, requireCsrf, async (req, res, next) => {
+  try {
+    const reviewId = Number(req.params.id);
+    const body = String(req.body.body || "").trim();
+
+    if (!Number.isInteger(reviewId) || reviewId < 1) {
+      return res.status(404).render("404", { title: "Revisão não encontrada" });
+    }
+    if (body.length < 1 || body.length > 2000) {
+      flash(req, "error", "O comentário deve ter entre 1 e 2000 caracteres.");
+      return res.redirect(`/revisao/${reviewId}`);
+    }
+
+    const { rows } = await pool.query(
+      `SELECT ar.status, a.author_id
+       FROM article_reviews ar
+       JOIN articles a ON a.id = ar.article_id
+       WHERE ar.id = $1`,
+      [reviewId],
+    );
+    const review = rows[0];
+    if (!review) return res.status(404).render("404", { title: "Revisão não encontrada" });
+
+    const allowed = req.user.role === "admin"
+      || Number(review.author_id) === Number(req.user.id);
+    if (!allowed) return res.status(403).send("Sem permissão para comentar nesta revisão.");
+    if (review.status !== "pending") {
+      flash(req, "error", "Esta rodada de revisão já foi encerrada.");
+      return res.redirect(`/revisao/${reviewId}`);
+    }
+
+    await pool.query(
+      `INSERT INTO article_review_comments (review_id, author_id, body)
+       VALUES ($1,$2,$3)`,
+      [reviewId, req.user.id, body],
+    );
+
+    flash(req, "success", "Comentário adicionado à revisão.");
+    res.redirect(`/revisao/${reviewId}`);
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post("/revisao/:id/decisao", requireAdmin, requireCsrf, async (req, res, next) => {
+  const reviewId = Number(req.params.id);
+  const action = String(req.body.action || "");
+  const note = String(req.body.decision_note || "").trim();
+
+  if (!Number.isInteger(reviewId) || reviewId < 1) {
+    return res.status(404).render("404", { title: "Revisão não encontrada" });
+  }
+  if (!["approve", "changes"].includes(action)) {
+    return res.status(422).send("Decisão editorial inválida.");
+  }
+  if (note.length > 2000) {
+    flash(req, "error", "A nota da decisão pode ter no máximo 2000 caracteres.");
+    return res.redirect(`/revisao/${reviewId}`);
+  }
+  if (action === "changes" && note.length < 3) {
+    flash(req, "error", "Explique quais ajustes precisam ser feitos.");
+    return res.redirect(`/revisao/${reviewId}`);
+  }
+
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+
+    const reviewResult = await client.query(
+      "SELECT * FROM article_reviews WHERE id = $1 FOR UPDATE",
+      [reviewId],
+    );
+    const review = reviewResult.rows[0];
+
+    if (!review) {
+      await client.query("ROLLBACK");
+      return res.status(404).render("404", { title: "Revisão não encontrada" });
+    }
+    if (review.status !== "pending") {
+      await client.query("ROLLBACK");
+      flash(req, "error", "Esta rodada de revisão já foi encerrada.");
+      return res.redirect(`/revisao/${reviewId}`);
+    }
+
+    const articleResult = await client.query(
+      "SELECT * FROM articles WHERE id = $1 FOR UPDATE",
+      [review.article_id],
+    );
+    const article = articleResult.rows[0];
+
+    if (!article) {
+      await client.query("ROLLBACK");
+      return res.status(404).render("404", { title: "Artigo não encontrado" });
+    }
+
+    if (action === "approve") {
+      await client.query(
+        `UPDATE articles
+         SET status = 'published', reviewer_id = $2,
+             published_at = COALESCE(published_at, NOW()), updated_at = NOW()
+         WHERE id = $1`,
+        [article.id, req.user.id],
+      );
+      await client.query(
+        `UPDATE article_reviews
+         SET status = 'approved', reviewer_id = $2,
+             decision_note = $3, resolved_at = NOW()
+         WHERE id = $1`,
+        [reviewId, req.user.id, note],
+      );
+    } else {
+      await client.query(
+        `UPDATE articles
+         SET status = 'draft', reviewer_id = $2, updated_at = NOW()
+         WHERE id = $1`,
+        [article.id, req.user.id],
+      );
+      await client.query(
+        `UPDATE article_reviews
+         SET status = 'changes_requested', reviewer_id = $2,
+             decision_note = $3, resolved_at = NOW()
+         WHERE id = $1`,
+        [reviewId, req.user.id, note],
+      );
+    }
+
+    await saveArticleVersion(client, article.id, req.user.id);
+    await client.query("COMMIT");
+
+    flash(
+      req,
+      "success",
+      action === "approve"
+        ? "Revisão aprovada e artigo publicado."
+        : "Artigo devolvido ao autor para ajustes.",
+    );
+    res.redirect(`/revisao/${reviewId}`);
+  } catch (error) {
+    await client.query("ROLLBACK");
+    next(error);
+  } finally {
+    client.release();
+  }
+});
+
 app.get("/historico/:slug/comparar", async (req, res, next) => {
   try {
     const articleResult = await pool.query("SELECT * FROM articles WHERE slug = $1", [req.params.slug]);
