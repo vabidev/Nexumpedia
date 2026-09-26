@@ -78,7 +78,10 @@ A aplicação não depende do disco do servidor para guardar banco ou mídia. Is
 - CSRF nos formulários;
 - senhas com bcrypt;
 - consultas parametrizadas no PostgreSQL;
-- modo claro/escuro e layout responsivo;
+- modo claro/escuro com transição suave;
+- marca visual adaptativa ao tema;
+- drawer lateral animado no mobile sem perder a posição de leitura;
+- layout responsivo;
 - validação automática de JavaScript e templates EJS no GitHub Actions.
 
 ## Executar localmente
@@ -136,7 +139,7 @@ Mantenha `PUBLIC_INDEXING=false` em desenvolvimento e staging. No domínio públ
 
 ## Versão atual
 
-**0.9.1** — hardening de autenticação com rota privada individual de login após o primeiro acesso.
+**0.9.2** — correção visual mobile: nova marca adaptativa, drawer lateral animado e transição suave de tema.
 
 ## Infoboxes
 
@@ -368,3 +371,10 @@ Quando `PUBLIC_INDEXING=false`, páginas recebem `noindex,nofollow`, o robots bl
 O arquivo `render.yaml` define o ambiente `nexumpedia-staging` e seu PostgreSQL isolado. O deploy automático usa `checksPass`, portanto uma alteração só é enviada ao staging depois que o GitHub Actions termina com sucesso.
 
 Consulte `docs/STAGING.md` antes do primeiro deploy.
+
+
+## Revisão visual automatizada
+
+Alterações visuais relevantes são verificadas com screenshots reais gerados pelo Playwright antes do merge. O artifact do CI inclui estados de desktop e mobile, temas claro/escuro e o drawer mobile aberto sobre um artigo.
+
+Esse fluxo serve para revisão visual humana além dos testes funcionais e de acessibilidade.
