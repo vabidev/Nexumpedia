@@ -330,3 +330,8 @@ label input,label textarea,label select{display:block;margin-top:5px;font-weight
 .login-notice{margin:12px 0 0}
 .account-security-note{margin-top:16px}
 .backup-warning{margin-bottom:18px}
+
+.skip-link{position:fixed;left:12px;top:8px;z-index:1000;transform:translateY(-160%);background:var(--bg);color:var(--text);border:2px solid var(--link);padding:8px 12px}
+.skip-link:focus{transform:translateY(0)}
+:focus-visible{outline:3px solid var(--link);outline-offset:2px}
+.featured-title{margin-top:0}
