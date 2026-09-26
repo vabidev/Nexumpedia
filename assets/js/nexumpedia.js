@@ -93,6 +93,22 @@
     });
   }
 
+  document.querySelectorAll("[data-select-on-focus]").forEach(input => {
+    input.addEventListener("focus", () => input.select());
+    input.addEventListener("click", () => input.select());
+  });
+
+  document.querySelectorAll("[data-close-window]").forEach(button => {
+    button.addEventListener("click", () => window.close());
+  });
+
+  document.querySelectorAll("form[data-confirm]").forEach(form => {
+    form.addEventListener("submit", event => {
+      const message = form.dataset.confirm || "Confirmar esta ação?";
+      if (!window.confirm(message)) event.preventDefault();
+    });
+  });
+
   const headings = [...document.querySelectorAll(".article h2[id], .article h3[id]")];
   const tocLinks = [...document.querySelectorAll(".toc-side a")];
   if (headings.length && tocLinks.length && "IntersectionObserver" in window) {
