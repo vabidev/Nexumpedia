@@ -19,7 +19,7 @@
         </div>
         <div class="article-tools">
           <% if (canRestore) { %>
-            <form method="post" action="/historico/<%= encodeURIComponent(article.slug) %>/<%= version.version_no %>/restaurar" class="inline-form" onsubmit="return confirm('Restaurar esta versão como uma nova versão do artigo?');">
+            <form method="post" action="/historico/<%= encodeURIComponent(article.slug) %>/<%= version.version_no %>/restaurar" class="inline-form" data-confirm="Restaurar esta versão como uma nova versão do artigo?">
               <input type="hidden" name="_csrf" value="<%= csrf %>">
               <button class="link-button danger-text" type="submit">Restaurar esta versão</button>
             </form>
