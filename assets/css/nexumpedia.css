@@ -16,17 +16,58 @@ a:hover{text-decoration:underline;color:var(--link-hover)}
 button,input,textarea,select{font:inherit}
 button{cursor:pointer}
 .topbar{min-height:64px;display:grid;grid-template-columns:minmax(220px,290px) minmax(280px,620px) 1fr;gap:20px;align-items:center;padding:8px 26px;border-bottom:1px solid var(--border-soft);background:var(--bg);position:sticky;top:0;z-index:20}
-.brand{display:flex;align-items:center;gap:10px;color:var(--text)}
+.brand{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:11px;
+  min-width:0;
+  color:var(--text)
+}
 .brand:hover{text-decoration:none}
-.brand-mark{display:block;width:44px;height:44px;flex:0 0 44px;overflow:visible}
-.brand-mark-link,.brand-mark-book,.brand-mark-spine,.brand-mark-n{vector-effect:non-scaling-stroke}
-.brand-mark-link{fill:none;stroke:var(--brand-2);stroke-width:2;stroke-linecap:round}
-.brand-mark-node{fill:var(--brand-2)}
-.brand-mark-n{fill:none;stroke:var(--brand);stroke-width:3.5;stroke-linecap:square;stroke-linejoin:round}
-.brand-mark-book{fill:var(--bg);stroke:var(--brand);stroke-width:2;stroke-linejoin:round}
-.brand-mark-spine{fill:none;stroke:var(--brand);stroke-width:1.8}
-.brand-name{font-family:var(--serif);font-size:24px;line-height:1;color:var(--brand)}
-.brand-tagline{display:block;font-size:10px;color:var(--muted);letter-spacing:.08em;margin-top:4px}
+.brand-symbol{
+  position:relative;
+  display:block;
+  width:58px;
+  height:54px;
+  flex:0 0 58px
+}
+.brand-symbol-image{
+  position:absolute;
+  inset:0;
+  display:block;
+  width:100%;
+  height:100%;
+  object-fit:contain
+}
+.brand-symbol-dark{display:none}
+html[data-theme="dark"] .brand-symbol-light{display:none}
+html[data-theme="dark"] .brand-symbol-dark{display:block}
+.brand-copy{
+  display:flex;
+  min-width:0;
+  flex-direction:column;
+  justify-content:center;
+  line-height:1
+}
+.brand-name{
+  font-family:Baskerville,"Iowan Old Style","Palatino Linotype",Georgia,"Times New Roman",serif;
+  font-size:27px;
+  font-weight:400;
+  line-height:.95;
+  letter-spacing:.012em;
+  color:var(--brand)
+}
+.brand-tagline{
+  display:block;
+  margin-top:7px;
+  color:var(--muted);
+  font-size:9px;
+  font-weight:500;
+  line-height:1.2;
+  letter-spacing:.17em;
+  white-space:nowrap
+}
 .search{display:flex;border:1px solid var(--border);background:var(--bg);min-width:0}
 .search:focus-within{outline:2px solid rgba(51,102,204,.2);border-color:var(--link)}
 .search input{border:0;background:transparent;color:var(--text);padding:8px 10px;min-width:0;flex:1;outline:0}
@@ -114,9 +155,9 @@ th{background:var(--surface);font-size:12px}
 }
 @media(max-width:820px){
   .topbar{grid-template-columns:auto 1fr auto;padding:7px 12px;gap:10px}
-  .brand-name{font-size:20px}
-  .brand-tagline{display:none}
-  .brand-mark{width:36px;height:36px;flex-basis:36px}
+  .brand{justify-content:center}
+  .brand-copy{display:none}
+  .brand-symbol{width:44px;height:42px;flex-basis:44px}
   .usernav>a{display:none}
   .mobile-menu{display:inline-grid;place-items:center}
   .page{display:block;padding:18px 18px 50px}
