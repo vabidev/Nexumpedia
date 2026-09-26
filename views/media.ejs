@@ -33,7 +33,7 @@
           <strong><%= item.original_name %></strong>
           <div class="meta"><%= item.uploader_name %> · <%= Math.round(item.size / 1024).toLocaleString("pt-BR") %> KB</div>
           <label>Código para o artigo
-            <input readonly value="<%= markup %>" onclick="this.select()">
+            <input readonly value="<%= markup %>" data-select-on-focus>
           </label>
         </div>
       </article>
