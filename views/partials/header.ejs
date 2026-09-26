@@ -13,6 +13,7 @@
   <meta property="og:type" content="<%= seo?.type || "website" %>">
   <% if (seo?.canonical) { %><meta property="og:url" content="<%= seo.canonical %>"><% } %>
   <link rel="icon" href="/assets/img/nexumpedia-mark.svg">
+  <script src="/assets/js/theme-init.js"></script>
   <link rel="stylesheet" href="/assets/css/nexumpedia.css">
   <% if (seo?.jsonLd) { %>
     <script type="application/ld+json" nonce="<%= cspNonce %>"><%- JSON.stringify(seo.jsonLd).replace(/</g, "\\u003c") %></script>
@@ -22,7 +23,7 @@
 <a class="skip-link" href="#conteudo-principal">Pular para o conteúdo</a>
 <header class="topbar">
   <a class="brand" href="/" aria-label="Nexumpedia, página principal">
-    <img src="/assets/img/nexumpedia-mark.svg" alt="">
+    <%- include("brand-mark") %>
     <span>
       <span class="brand-name">Nexumpedia</span>
       <span class="brand-tagline">CONHECIMENTO EM CONEXÃO</span>
@@ -47,10 +48,13 @@
         <button class="link-button" type="submit">Sair</button>
       </form>
     <% } %>
-    <button class="icon-btn" type="button" data-theme-toggle aria-label="Alternar tema" aria-pressed="false">◐</button>
-    <button class="icon-btn mobile-menu" type="button" data-menu-toggle aria-label="Abrir menu" aria-expanded="false" aria-controls="navegacao-lateral">☰</button>
+    <button class="icon-btn theme-toggle" type="button" data-theme-toggle aria-label="Usar tema escuro" aria-pressed="false">◐</button>
+    <button class="icon-btn mobile-menu" type="button" data-menu-toggle aria-label="Abrir menu" aria-expanded="false" aria-controls="navegacao-lateral">
+      <span class="hamburger" aria-hidden="true"><span></span><span></span><span></span></span>
+    </button>
   </nav>
 </header>
+<button class="drawer-backdrop" type="button" data-menu-backdrop aria-label="Fechar menu" tabindex="-1"></button>
 
 <% for (const flash of flashes || []) { %>
   <div class="flash <%= flash.type === "error" ? "error" : flash.type === "success" ? "success" : "info" %>" role="status" aria-live="polite"><%= flash.message %></div>
