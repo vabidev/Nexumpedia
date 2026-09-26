@@ -2278,12 +2278,20 @@ app.use((error, req, res, _next) => {
   });
 });
 
-const port = Number(process.env.PORT || 3000);
-const server = app.listen(port, "0.0.0.0", () => {
-  console.log(`Nexumpedia em http://0.0.0.0:${port}`);
-});
+export { app };
+
+const embeddedRuntime = process.env.NEXUMPEDIA_EMBEDDED === "true";
+let server = null;
+
+if (!embeddedRuntime) {
+  const port = Number(process.env.PORT || 3000);
+  server = app.listen(port, "0.0.0.0", () => {
+    console.log(`Nexumpedia em http://0.0.0.0:${port}`);
+  });
+}
 
 async function shutdown(signal) {
+  if (!server) return;
   console.log(`${signal} recebido. Encerrando Nexumpedia com segurança.`);
   server.close(async () => {
     try {
@@ -2296,5 +2304,7 @@ async function shutdown(signal) {
   setTimeout(() => process.exit(1), 10000).unref();
 }
 
-process.once("SIGTERM", () => shutdown("SIGTERM"));
-process.once("SIGINT", () => shutdown("SIGINT"));
+if (!embeddedRuntime) {
+  process.once("SIGTERM", () => shutdown("SIGTERM"));
+  process.once("SIGINT", () => shutdown("SIGINT"));
+}
