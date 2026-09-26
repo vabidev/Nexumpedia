@@ -9,6 +9,8 @@ const requiredTables = [
   "categories",
   "article_categories",
   "article_references",
+  "article_reviews",
+  "article_review_comments",
   "media",
   "article_infoboxes",
   "article_infobox_fields",
