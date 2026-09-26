@@ -37,6 +37,12 @@ A aplicação não depende do disco do servidor para guardar banco ou mídia. Is
 - visualização individual de versões históricas;
 - comparação textual e estruturada entre versões;
 - restauração de versão como uma nova revisão;
+- fila editorial de revisões pendentes;
+- rodadas de revisão independentes e preservadas;
+- conversa entre colaborador e administrador por rodada;
+- aprovação com publicação;
+- rejeição com pedido de ajustes e parecer obrigatório;
+- histórico de pareceres e revisores;
 - instalação do primeiro administrador;
 - login e sessões;
 - papéis de **administrador** e **colaborador**;
@@ -105,7 +111,7 @@ Em produção, `SESSION_SECRET` precisa ter pelo menos 32 caracteres.
 
 ## Versão atual
 
-**0.6.0** — pré-visualização editorial, comparação e restauração segura de versões implementadas.
+**0.7.0** — fila de revisão editorial, conversa entre autor e revisor e decisões de aprovação/ajustes implementadas.
 
 ## Infoboxes
 
@@ -134,15 +140,30 @@ O histórico permite:
 
 A restauração preserva o estado editorial atual do artigo. Em um artigo publicado, um administrador deve considerar que a restauração altera o conteúdo atual imediatamente.
 
+## Revisão editorial
+
+Cada envio para revisão cria uma **rodada própria**, preservada mesmo depois de encerrada.
+
+Durante uma rodada pendente:
+
+- o colaborador pode deixar uma nota de envio;
+- autor e administrador podem conversar em comentários;
+- administradores veem todas as pendências em `/revisoes`;
+- o administrador pode aprovar e publicar;
+- ou pode devolver o artigo para rascunho pedindo ajustes, com parecer obrigatório.
+
+Se o colaborador voltar a salvar o artigo como rascunho enquanto uma revisão está pendente, a rodada é cancelada automaticamente. Ao reenviar depois dos ajustes, uma nova rodada é criada, preservando a anterior.
+
 ## Fluxo editorial
 
 1. O primeiro administrador é criado em `/install`.
 2. Administradores podem criar outras contas.
 3. Colaboradores criam artigos como rascunho.
-4. O artigo pode ser enviado para revisão.
-5. Administradores revisam e publicam.
-6. Cada salvamento gera uma versão no histórico.
-7. Colaboradores não alteram diretamente um artigo já publicado.
+4. O artigo é enviado para uma rodada de revisão.
+5. Autor e revisor podem conversar dentro da rodada.
+6. O administrador aprova/publica ou devolve para ajustes.
+7. Cada decisão editorial gera uma nova versão no histórico.
+8. Colaboradores não alteram diretamente um artigo já publicado.
 
 ## Formatação dos artigos
 
@@ -188,6 +209,7 @@ A biblioteca de mídia gera o código da imagem automaticamente.
 - `scripts/check-views.js` — validação dos templates;
 - `scripts/check-citations.js` — testes do renderizador de citações;
 - `scripts/check-history.js` — testes de diff e snapshots históricos;
+- `scripts/check-review.js` — valida uma rodada editorial completa no PostgreSQL;
 - `scripts/check-db.js` — sobe o schema e valida as migrações PostgreSQL no CI;
 - `docker-compose.yml` — PostgreSQL para desenvolvimento local.
 
