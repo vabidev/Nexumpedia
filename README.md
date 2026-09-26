@@ -43,6 +43,15 @@ A aplicação não depende do disco do servidor para guardar banco ou mídia. Is
 - aprovação com publicação;
 - rejeição com pedido de ajustes e parecer obrigatório;
 - histórico de pareceres e revisores;
+- rate limiting global, de escrita e autenticação;
+- Content Security Policy sem JavaScript inline;
+- request ID em cada solicitação e nos erros;
+- troca de senha com encerramento de sessões;
+- redefinição administrativa de senha;
+- backup administrativo completo em JSON;
+- health checks de liveness e readiness;
+- encerramento gracioso em SIGTERM/SIGINT;
+- Dockerfile e Procfile para deploy;
 - instalação do primeiro administrador;
 - login e sessões;
 - papéis de **administrador** e **colaborador**;
@@ -107,11 +116,11 @@ DATABASE_URL=postgresql://nexumpedia:nexumpedia@127.0.0.1:5432/nexumpedia
 SESSION_SECRET=uma-chave-longa-e-aleatoria
 ```
 
-Em produção, `SESSION_SECRET` precisa ter pelo menos 32 caracteres.
+Em produção, `SESSION_SECRET` precisa ter pelo menos 32 caracteres. Use HTTPS no proxy/host da aplicação; cookies de sessão ficam marcados como Secure em produção.
 
 ## Versão atual
 
-**0.7.0** — fila de revisão editorial, conversa entre autor e revisor e decisões de aprovação/ajustes implementadas.
+**0.8.0** — preparação para produção: segurança HTTP, senhas, backup, health checks e deploy portável.
 
 ## Infoboxes
 
@@ -210,6 +219,7 @@ A biblioteca de mídia gera o código da imagem automaticamente.
 - `scripts/check-citations.js` — testes do renderizador de citações;
 - `scripts/check-history.js` — testes de diff e snapshots históricos;
 - `scripts/check-review.js` — valida uma rodada editorial completa no PostgreSQL;
+- `scripts/check-security.js` — sobe a aplicação e valida CSP, headers, request IDs, health checks e ausência de JavaScript inline;
 - `scripts/check-db.js` — sobe o schema e valida as migrações PostgreSQL no CI;
 - `docker-compose.yml` — PostgreSQL para desenvolvimento local.
 
@@ -219,7 +229,7 @@ A aplicação escuta `process.env.PORT` e `0.0.0.0`, então está preparada para
 
 Nesta fase as imagens são armazenadas no próprio PostgreSQL. Para uma biblioteca muito grande, o próximo passo será migrar a mídia para armazenamento de objetos compatível com S3, sem mudar a interface editorial.
 
-## Segurança
+## Produção e segurança
 
 Já estão aplicados:
 
@@ -227,13 +237,64 @@ Já estão aplicados:
 - sessões armazenadas no PostgreSQL;
 - CSRF;
 - bcrypt para senhas;
+- política de senha de 12+ caracteres com letra e número para novas senhas;
+- encerramento das sessões após troca ou reset de senha;
 - consultas parametrizadas;
 - escape de saída em EJS;
 - renderizador de artigo restrito a uma marcação simples;
 - limite de 5 MB e lista de MIME permitidos nos uploads;
-- `helmet`;
-- rate-limit básico de tentativas de login por sessão;
-- validação de segredo de sessão em produção.
+- Helmet com Content Security Policy;
+- JavaScript inline removido dos templates;
+- rate limiting global, de autenticação e operações de escrita;
+- request IDs propagados no header `X-Request-Id`;
+- logs de erro com request ID;
+- validação de segredo de sessão em produção;
+- liveness em `/health/live`;
+- readiness do PostgreSQL em `/health/ready`;
+- encerramento gracioso em SIGTERM/SIGINT.
+
+### Senhas
+
+Usuários autenticados podem trocar a própria senha em `/conta`. A troca invalida as sessões existentes.
+
+Administradores podem redefinir a senha de outras contas pela página de usuários. Isso também encerra todas as sessões antigas da conta redefinida.
+
+Nesta versão, a recuperação não depende de e-mail: ela é feita administrativamente. Integração com provedor de e-mail pode ser adicionada em uma versão futura.
+
+### Backup
+
+Administradores podem baixar um backup pela página `/usuarios`.
+
+O arquivo contém:
+
+- usuários e hashes de senha;
+- artigos e versões;
+- categorias;
+- referências;
+- infoboxes;
+- mídia codificada em Base64;
+- revisões e comentários.
+
+Sessões ativas não entram no backup. O download usa uma transação PostgreSQL de leitura repetível para manter o snapshot consistente.
+
+**O backup é sensível.** Armazene-o fora do servidor da aplicação e em local privado.
+
+### Deploy
+
+A aplicação pode rodar diretamente em hosts Node.js com:
+
+```bash
+npm install
+npm start
+```
+
+Também existem:
+
+- `Procfile` com o processo web;
+- `Dockerfile` baseado em Node 22 Alpine;
+- healthcheck do container apontando para `/health/ready`.
+
+O host precisa fornecer `DATABASE_URL`, `SESSION_SECRET`, `NODE_ENV=production` e `PORT` quando exigido pela plataforma.
 
 ---
 
