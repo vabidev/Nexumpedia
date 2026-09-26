@@ -56,6 +56,29 @@ const app = express();
 const PgSession = connectPgSimple(session);
 const production = process.env.NODE_ENV === "production";
 const sessionSecret = process.env.SESSION_SECRET || (production ? "" : "nexumpedia-local-development-only");
+const configuredSiteUrl = String(process.env.SITE_URL || "").trim().replace(/\/+$/, "");
+const publicIndexing = String(process.env.PUBLIC_INDEXING || "false").toLowerCase() === "true";
+
+if (production && publicIndexing && !configuredSiteUrl) {
+  throw new Error("SITE_URL é obrigatória quando PUBLIC_INDEXING=true em produção.");
+}
+
+function requestBaseUrl(req) {
+  return configuredSiteUrl || `${req.protocol}://${req.get("host")}`;
+}
+
+function absoluteUrl(req, pathname = "/") {
+  return new URL(pathname, requestBaseUrl(req) + "/").toString();
+}
+
+function xmlEscape(value = "") {
+  return String(value)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&apos;");
+}
 
 if (production && sessionSecret.length < 32) {
   throw new Error("SESSION_SECRET precisa ter pelo menos 32 caracteres em produção.");
@@ -77,6 +100,7 @@ app.use((req, res, next) => {
 
   req.requestId = requestId;
   res.locals.requestId = requestId;
+  res.locals.cspNonce = crypto.randomBytes(18).toString("base64");
   res.set("X-Request-Id", requestId);
   next();
 });
@@ -85,8 +109,8 @@ app.use(helmet({
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
-      scriptSrc: ["'self'"],
-      styleSrc: ["'self'", "'unsafe-inline'"],
+      scriptSrc: ["'self'", (_req, res) => `'nonce-${res.locals.cspNonce}'`],
+      styleSrc: ["'self'"],
       imgSrc: ["'self'", "data:"],
       connectSrc: ["'self'"],
       fontSrc: ["'self'"],
@@ -161,6 +185,25 @@ app.use((req, res, next) => {
   if (["POST", "PUT", "PATCH", "DELETE"].includes(req.method)) {
     return writeLimiter(req, res, next);
   }
+  next();
+});
+
+app.use((req, res, next) => {
+  const privatePrefixes = [
+    "/painel", "/editor", "/usuarios", "/midia", "/conta",
+    "/revisao", "/revisoes", "/install", "/login", "/historico",
+  ];
+  const privatePage = privatePrefixes.some((prefix) => req.path === prefix || req.path.startsWith(prefix + "/"));
+  const searchPage = Boolean(req.query?.q);
+  const indexable = publicIndexing && !privatePage && !searchPage;
+
+  res.locals.seo = {
+    description: "Nexumpedia, uma enciclopédia digital com conteúdo editorial revisado.",
+    canonical: absoluteUrl(req, req.path),
+    robots: indexable ? "index,follow" : "noindex,nofollow",
+    type: "website",
+    jsonLd: null,
+  };
   next();
 });
 
@@ -344,11 +387,16 @@ function validateReferences(references, content) {
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 5 * 1024 * 1024 },
-  fileFilter: (_req, file, callback) => {
-    const allowed = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
-    callback(allowed.has(file.mimetype) ? null : new Error("Formato de imagem não permitido."), allowed.has(file.mimetype));
-  },
 });
+
+function detectedImageMime(buffer) {
+  if (!Buffer.isBuffer(buffer) || buffer.length < 12) return null;
+  if (buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff) return "image/jpeg";
+  if (buffer.subarray(0, 8).equals(Buffer.from([0x89,0x50,0x4e,0x47,0x0d,0x0a,0x1a,0x0a]))) return "image/png";
+  if (buffer.subarray(0, 6).toString("ascii") === "GIF87a" || buffer.subarray(0, 6).toString("ascii") === "GIF89a") return "image/gif";
+  if (buffer.subarray(0, 4).toString("ascii") === "RIFF" && buffer.subarray(8, 12).toString("ascii") === "WEBP") return "image/webp";
+  return null;
+}
 
 app.get("/", async (req, res, next) => {
   try {
@@ -382,6 +430,20 @@ app.get("/", async (req, res, next) => {
        GROUP BY c.id, c.name, c.slug
        ORDER BY c.name ASC`,
     );
+
+    res.locals.seo.description = q
+      ? `Resultados da pesquisa por “${q}” na Nexumpedia.`
+      : "Nexumpedia, uma enciclopédia digital com conteúdo produzido e revisado por colaboradores autorizados.";
+    res.locals.seo.canonical = absoluteUrl(req, "/");
+    if (!q && publicIndexing) {
+      res.locals.seo.jsonLd = {
+        "@context": "https://schema.org",
+        "@type": "WebSite",
+        name: "Nexumpedia",
+        url: absoluteUrl(req, "/"),
+        description: res.locals.seo.description,
+      };
+    }
 
     res.render("index", {
       title: "Nexumpedia",
@@ -433,6 +495,9 @@ app.get("/categoria/:slug", async (req, res, next) => {
        GROUP BY c.id, c.name, c.slug
        ORDER BY c.name ASC`,
     );
+
+    res.locals.seo.description = category.description || `Artigos publicados na categoria ${category.name} da Nexumpedia.`;
+    res.locals.seo.canonical = absoluteUrl(req, `/categoria/${encodeURIComponent(category.slug)}`);
 
     res.render("index", {
       title: `Categoria: ${category.name}`,
@@ -627,6 +692,33 @@ app.get("/artigo/:slug", async (req, res, next) => {
     const references = await getArticleReferences(article.id);
     const infobox = await getArticleInfobox(article.id);
 
+    const canonical = absoluteUrl(req, `/artigo/${encodeURIComponent(article.slug)}`);
+    res.locals.seo.description = article.summary || `${article.title} — artigo da Nexumpedia.`;
+    res.locals.seo.canonical = canonical;
+    res.locals.seo.type = "article";
+    if (article.status !== "published") {
+      res.locals.seo.robots = "noindex,nofollow";
+    } else if (publicIndexing) {
+      res.locals.seo.jsonLd = {
+        "@context": "https://schema.org",
+        "@type": "Article",
+        headline: article.title,
+        description: res.locals.seo.description,
+        datePublished: article.published_at ? new Date(article.published_at).toISOString() : undefined,
+        dateModified: new Date(article.updated_at).toISOString(),
+        mainEntityOfPage: canonical,
+        author: {
+          "@type": "Person",
+          name: article.author_name,
+        },
+        publisher: {
+          "@type": "Organization",
+          name: "Nexumpedia",
+          url: absoluteUrl(req, "/"),
+        },
+      };
+    }
+
     res.render("article", {
       title: article.title,
       article,
@@ -653,8 +745,81 @@ app.get("/aleatorio", async (_req, res, next) => {
   }
 });
 
-app.get("/sobre", (_req, res) => {
+app.get("/sobre", (req, res) => {
+  res.locals.seo.description = "Conheça a proposta editorial, o modelo de colaboração e a identidade da Nexumpedia.";
+  res.locals.seo.canonical = absoluteUrl(req, "/sobre");
   res.render("about", { title: "Sobre a Nexumpedia" });
+});
+
+app.get("/robots.txt", (req, res) => {
+  res.type("text/plain");
+  if (!publicIndexing) {
+    return res.send("User-agent: *\nDisallow: /\n");
+  }
+
+  res.send([
+    "User-agent: *",
+    "Allow: /",
+    "Disallow: /painel",
+    "Disallow: /editor",
+    "Disallow: /usuarios",
+    "Disallow: /midia",
+    "Disallow: /conta",
+    "Disallow: /revisao",
+    "Disallow: /revisoes",
+    "Disallow: /login",
+    "Disallow: /install",
+    "Disallow: /historico",
+    `Sitemap: ${absoluteUrl(req, "/sitemap.xml")}`,
+    "",
+  ].join("\n"));
+});
+
+app.get("/sitemap.xml", async (req, res, next) => {
+  try {
+    if (!publicIndexing) return res.status(404).type("text/plain").send("Not found");
+
+    const { rows: articles } = await pool.query(
+      "SELECT slug, updated_at FROM articles WHERE status = 'published' ORDER BY slug ASC",
+    );
+    const { rows: categories } = await pool.query(
+      `SELECT DISTINCT c.slug
+       FROM categories c
+       JOIN article_categories ac ON ac.category_id = c.id
+       JOIN articles a ON a.id = ac.article_id
+       WHERE a.status = 'published'
+       ORDER BY c.slug ASC`,
+    );
+
+    const urls = [
+      { loc: absoluteUrl(req, "/") },
+      { loc: absoluteUrl(req, "/sobre") },
+      ...categories.map((category) => ({
+        loc: absoluteUrl(req, `/categoria/${encodeURIComponent(category.slug)}`),
+      })),
+      ...articles.map((article) => ({
+        loc: absoluteUrl(req, `/artigo/${encodeURIComponent(article.slug)}`),
+        lastmod: new Date(article.updated_at).toISOString(),
+      })),
+    ];
+
+    const body = [
+      '<?xml version="1.0" encoding="UTF-8"?>',
+      '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
+      ...urls.map((url) => [
+        "  <url>",
+        `    <loc>${xmlEscape(url.loc)}</loc>`,
+        url.lastmod ? `    <lastmod>${xmlEscape(url.lastmod)}</lastmod>` : "",
+        "  </url>",
+      ].filter(Boolean).join("\n")),
+      "</urlset>",
+      "",
+    ].join("\n");
+
+    res.type("application/xml").send(body);
+  } catch (error) {
+    next(error);
+  }
 });
 
 app.get("/painel", requireLogin, async (req, res, next) => {
@@ -1636,7 +1801,7 @@ app.post("/admin/backup", requireAdmin, requireCsrf, async (req, res, next) => {
     const payload = {
       format: "nexumpedia-backup",
       schemaVersion: 1,
-      appVersion: "0.8.0",
+      appVersion: "0.9.0",
       createdAt: new Date().toISOString(),
       warning: "Contém hashes de senha e mídia. Armazene este arquivo em local privado.",
       data,
@@ -1751,12 +1916,18 @@ app.post("/midia", requireLogin, upload.single("image"), requireCsrf, async (req
       });
     }
 
+    const detectedMime = detectedImageMime(req.file.buffer);
+    const allowedMimes = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
+    if (!detectedMime || !allowedMimes.has(detectedMime)) {
+      return res.status(422).send("O arquivo enviado não corresponde a uma imagem JPG, PNG, WebP ou GIF válida.");
+    }
+
     await pool.query(
       `INSERT INTO media (original_name, mime, size, alt_text, data, uploader_id)
        VALUES ($1,$2,$3,$4,$5,$6)`,
       [
         path.basename(req.file.originalname),
-        req.file.mimetype,
+        detectedMime,
         req.file.size,
         String(req.body.alt_text || "").trim().slice(0, 180),
         req.file.buffer,
