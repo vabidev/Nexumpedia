@@ -435,7 +435,7 @@ app.get("/", async (req, res, next) => {
       ? `Resultados da pesquisa por “${q}” na Nexumpedia.`
       : "Nexumpedia, uma enciclopédia digital com conteúdo produzido e revisado por colaboradores autorizados.";
     res.locals.seo.canonical = absoluteUrl(req, "/");
-    if (!q && publicIndexing) {
+    if (!q) {
       res.locals.seo.jsonLd = {
         "@context": "https://schema.org",
         "@type": "WebSite",
@@ -698,7 +698,7 @@ app.get("/artigo/:slug", async (req, res, next) => {
     res.locals.seo.type = "article";
     if (article.status !== "published") {
       res.locals.seo.robots = "noindex,nofollow";
-    } else if (publicIndexing) {
+    } else {
       res.locals.seo.jsonLd = {
         "@context": "https://schema.org",
         "@type": "Article",
