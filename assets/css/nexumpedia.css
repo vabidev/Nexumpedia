@@ -33,8 +33,9 @@ button{cursor:pointer}
 .search button{border:0;border-left:1px solid var(--border);background:var(--surface);color:var(--text);padding:7px 14px;font-weight:600}
 .usernav{display:flex;justify-content:flex-end;gap:14px;align-items:center;font-size:13px;white-space:nowrap}
 .icon-btn{border:1px solid var(--border);background:var(--bg);color:var(--text);width:34px;height:34px;border-radius:3px}
-.theme-toggle{transition:transform .28s ease}
-.theme-toggle[aria-pressed="true"]{transform:rotate(180deg)}
+.theme-glyph{position:relative;display:block;width:14px;height:14px;margin:auto;border:2px solid currentColor;border-radius:50%;overflow:hidden;transition:transform .28s ease}
+.theme-glyph::after{content:"";position:absolute;top:-2px;right:-2px;width:8px;height:16px;background:currentColor}
+.theme-toggle[aria-pressed="true"] .theme-glyph{transform:rotate(180deg)}
 .hamburger{position:relative;display:block;width:17px;height:14px;margin:auto}
 .hamburger span{position:absolute;left:0;width:17px;height:2px;border-radius:2px;background:currentColor;transform-origin:center;transition:top .22s ease,transform .22s ease,opacity .16s ease}
 .hamburger span:nth-child(1){top:0}
