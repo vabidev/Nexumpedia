@@ -173,6 +173,23 @@ app.locals.reviewStatusLabel = (status) => ({
   cancelled: "Cancelada",
 })[status] || status;
 
+function validateNewPassword(password) {
+  const errors = [];
+  if (password.length < 12) errors.push("A senha precisa ter pelo menos 12 caracteres.");
+  if (password.length > 128) errors.push("A senha pode ter no máximo 128 caracteres.");
+  if (!/[A-Za-z]/.test(password) || !/\d/.test(password)) {
+    errors.push("Use pelo menos uma letra e um número.");
+  }
+  return errors;
+}
+
+async function revokeUserSessions(userId) {
+  await pool.query(
+    "DELETE FROM user_sessions WHERE (sess->>'userId') = $1",
+    [String(userId)],
+  );
+}
+
 function parseCategories(value = "") {
   return [...new Set(
     String(value)
@@ -1449,6 +1466,186 @@ app.get("/historico/:slug", async (req, res, next) => {
   }
 });
 
+app.get("/conta", requireLogin, (req, res) => {
+  res.render("account", {
+    title: "Minha conta",
+    errors: [],
+  });
+});
+
+app.post("/conta/senha", authLimiter, requireLogin, requireCsrf, async (req, res, next) => {
+  try {
+    const currentPassword = String(req.body.current_password || "");
+    const newPassword = String(req.body.new_password || "");
+    const confirmPassword = String(req.body.confirm_password || "");
+    const errors = validateNewPassword(newPassword);
+
+    if (newPassword !== confirmPassword) {
+      errors.push("A confirmação da nova senha não confere.");
+    }
+
+    const { rows } = await pool.query(
+      "SELECT password_hash FROM users WHERE id = $1 AND active = TRUE",
+      [req.user.id],
+    );
+    const account = rows[0];
+
+    if (!account || !(await bcrypt.compare(currentPassword, account.password_hash))) {
+      errors.push("A senha atual está incorreta.");
+    }
+
+    if (errors.length) {
+      return res.status(422).render("account", {
+        title: "Minha conta",
+        errors,
+      });
+    }
+
+    const passwordHash = await bcrypt.hash(newPassword, 12);
+    await pool.query(
+      "UPDATE users SET password_hash = $2, updated_at = NOW() WHERE id = $1",
+      [req.user.id, passwordHash],
+    );
+    await revokeUserSessions(req.user.id);
+
+    req.session.destroy((error) => {
+      if (error) return next(error);
+      res.redirect("/login?password=changed");
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.get("/usuarios/:id/senha", requireAdmin, async (req, res, next) => {
+  try {
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id) || id < 1) {
+      return res.status(404).render("404", { title: "Usuário não encontrado" });
+    }
+    if (id === Number(req.user.id)) {
+      return res.redirect("/conta");
+    }
+
+    const { rows } = await pool.query(
+      "SELECT id, username, display_name, email, role, active FROM users WHERE id = $1",
+      [id],
+    );
+    const account = rows[0];
+    if (!account) return res.status(404).render("404", { title: "Usuário não encontrado" });
+
+    res.render("admin-password", {
+      title: "Redefinir senha",
+      account,
+      errors: [],
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post("/usuarios/:id/senha", authLimiter, requireAdmin, requireCsrf, async (req, res, next) => {
+  try {
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id) || id < 1) {
+      return res.status(404).render("404", { title: "Usuário não encontrado" });
+    }
+    if (id === Number(req.user.id)) return res.redirect("/conta");
+
+    const { rows } = await pool.query(
+      "SELECT id, username, display_name, email, role, active FROM users WHERE id = $1",
+      [id],
+    );
+    const account = rows[0];
+    if (!account) return res.status(404).render("404", { title: "Usuário não encontrado" });
+
+    const newPassword = String(req.body.new_password || "");
+    const confirmPassword = String(req.body.confirm_password || "");
+    const errors = validateNewPassword(newPassword);
+    if (newPassword !== confirmPassword) errors.push("A confirmação da senha não confere.");
+
+    if (errors.length) {
+      return res.status(422).render("admin-password", {
+        title: "Redefinir senha",
+        account,
+        errors,
+      });
+    }
+
+    await pool.query(
+      "UPDATE users SET password_hash = $2, updated_at = NOW() WHERE id = $1",
+      [id, await bcrypt.hash(newPassword, 12)],
+    );
+    await revokeUserSessions(id);
+
+    flash(req, "success", `Senha de ${account.display_name} redefinida. As sessões anteriores foram encerradas.`);
+    res.redirect("/usuarios");
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post("/admin/backup", requireAdmin, requireCsrf, async (req, res, next) => {
+  const client = await pool.connect();
+  try {
+    if (production && !req.secure) {
+      return res.status(400).send("O download de backup exige HTTPS em produção.");
+    }
+
+    await client.query("BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY");
+
+    const tables = [
+      "users",
+      "articles",
+      "article_versions",
+      "categories",
+      "article_categories",
+      "article_references",
+      "media",
+      "article_infoboxes",
+      "article_infobox_fields",
+      "article_reviews",
+      "article_review_comments",
+    ];
+
+    const data = {};
+    for (const table of tables) {
+      const { rows } = await client.query(`SELECT * FROM ${table} ORDER BY 1 ASC`);
+      data[table] = rows.map((row) => {
+        const output = {};
+        for (const [key, value] of Object.entries(row)) {
+          output[key] = Buffer.isBuffer(value)
+            ? { encoding: "base64", data: value.toString("base64") }
+            : value;
+        }
+        return output;
+      });
+    }
+
+    await client.query("COMMIT");
+
+    const payload = {
+      format: "nexumpedia-backup",
+      schemaVersion: 1,
+      appVersion: "0.8.0",
+      createdAt: new Date().toISOString(),
+      warning: "Contém hashes de senha e mídia. Armazene este arquivo em local privado.",
+      data,
+    };
+
+    const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+    res.set("Cache-Control", "no-store");
+    res.set("Content-Type", "application/json; charset=utf-8");
+    res.set("Content-Disposition", `attachment; filename="nexumpedia-backup-${stamp}.json"`);
+    res.send(JSON.stringify(payload, null, 2));
+  } catch (error) {
+    try { await client.query("ROLLBACK"); } catch {}
+    next(error);
+  } finally {
+    client.release();
+  }
+});
+
 app.get("/usuarios", requireAdmin, async (_req, res, next) => {
   try {
     const { rows: users } = await pool.query(
@@ -1582,9 +1779,29 @@ app.get("/media/:id", async (req, res, next) => {
   }
 });
 
+app.get("/health/live", (_req, res) => {
+  res.json({
+    ok: true,
+    uptimeSeconds: Math.floor(process.uptime()),
+  });
+});
+
+app.get("/health/ready", async (_req, res, next) => {
+  try {
+    await pool.query("SELECT 1");
+    res.json({ ok: true, database: "ready" });
+  } catch (error) {
+    res.status(503).json({ ok: false, database: "unavailable" });
+  }
+});
+
 app.get("/health", async (_req, res) => {
-  await pool.query("SELECT 1");
-  res.json({ ok: true });
+  try {
+    await pool.query("SELECT 1");
+    res.json({ ok: true, database: "ready" });
+  } catch {
+    res.status(503).json({ ok: false, database: "unavailable" });
+  }
 });
 
 app.use((_req, res) => {
@@ -1592,7 +1809,12 @@ app.use((_req, res) => {
 });
 
 app.use((error, req, res, _next) => {
-  console.error(error);
+  console.error({
+    requestId: req.requestId,
+    method: req.method,
+    path: req.originalUrl,
+    error: error?.stack || error,
+  });
   if (error instanceof multer.MulterError) {
     return res.status(422).send(error.code === "LIMIT_FILE_SIZE"
       ? "A imagem pode ter no máximo 5 MB."
@@ -1603,7 +1825,7 @@ app.use((error, req, res, _next) => {
   }
   res.status(500).render("500", {
     title: "Erro interno",
-    requestId: crypto.randomUUID(),
+    requestId: req.requestId,
   });
 });
 
