@@ -1,0 +1,54 @@
+<%- include("partials/header", { title, showSearch: false }) %>
+<main id="conteudo-principal" class="auth-shell">
+  <section class="auth-card private-access-card">
+    <h1><%= configured ? "Alterar URL privada" : "Definir sua URL privada" %></h1>
+
+    <p class="muted">
+      <%= configured
+        ? "A nova rota substitui a anterior imediatamente."
+        : "Depois desta configuração, sua conta deixa de entrar pelo endereço padrão /login." %>
+    </p>
+
+    <% if (errors.length) { %>
+      <div class="form-errors"><% for (const error of errors) { %><div><%= error %></div><% } %></div>
+    <% } %>
+
+    <div class="notice">
+      <strong>Guarde esse endereço.</strong>
+      A Nexumpedia armazena apenas o hash da rota. Se você esquecer, um administrador precisará resetá-la.
+    </div>
+
+    <form method="post" class="stack-form">
+      <input type="hidden" name="_csrf" value="<%= csrf %>">
+
+      <label>Rota privada
+        <div class="private-path-input">
+          <span>/</span>
+          <input
+            name="private_path"
+            minlength="20"
+            maxlength="64"
+            pattern="[a-z0-9][a-z0-9_-]{19,63}"
+            required
+            autocomplete="off"
+            spellcheck="false"
+            value="<%= suggestedPath %>"
+          >
+        </div>
+        <span class="field-hint">20–64 caracteres. Use letras minúsculas, números, hífen ou sublinhado. Quanto menos previsível, melhor.</span>
+      </label>
+
+      <% if (configured) { %>
+        <label>Senha atual
+          <input type="password" name="current_password" required autocomplete="current-password">
+          <span class="field-hint">Necessária para trocar uma rota já configurada.</span>
+        </label>
+      <% } %>
+
+      <button class="primary" type="submit"><%= configured ? "Trocar URL privada" : "Ativar URL privada" %></button>
+    </form>
+
+    <% if (configured) { %><a href="/conta">← Voltar à conta</a><% } %>
+  </section>
+</main>
+<%- include("partials/footer") %>
