@@ -8,6 +8,12 @@
       <div class="form-errors"><% for (const error of errors) { %><div><%= error %></div><% } %></div>
     <% } %>
 
+    <div class="account-access-block">
+      <strong>URL privada de acesso</strong>
+      <p class="muted">Sua conta usa uma rota particular para abrir a tela de login. O endereço não é exibido aqui porque apenas o hash é armazenado.</p>
+      <a class="secondary" href="/conta/acesso">Alterar URL privada</a>
+    </div>
+
     <form method="post" action="/conta/senha" class="stack-form">
       <input type="hidden" name="_csrf" value="<%= csrf %>">
 
@@ -27,7 +33,7 @@
       <button class="primary" type="submit">Alterar senha</button>
     </form>
 
-    <p class="meta account-security-note">Ao trocar a senha, todas as sessões da conta são encerradas e você precisa entrar novamente.</p>
+    <p class="meta account-security-note">Ao trocar a senha, todas as sessões anteriores são encerradas; esta sessão é renovada com segurança.</p>
     <a href="/painel">← Voltar ao painel</a>
   </section>
 </main>
