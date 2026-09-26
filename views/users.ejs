@@ -2,12 +2,20 @@
 <main class="admin-shell">
   <div class="admin-header">
     <div><div class="meta">Administração</div><h1>Usuários</h1></div>
-    <a class="secondary" href="/painel">← Painel</a>
+    <div class="button-row">
+      <form method="post" action="/admin/backup">
+        <input type="hidden" name="_csrf" value="<%= csrf %>">
+        <button class="secondary" type="submit">Baixar backup</button>
+      </form>
+      <a class="secondary" href="/painel">← Painel</a>
+    </div>
   </div>
 
   <% if (errors.length) { %>
     <div class="form-errors"><% for (const error of errors) { %><div><%= error %></div><% } %></div>
   <% } %>
+
+  <div class="notice backup-warning"><strong>Backup administrativo:</strong> o arquivo inclui conteúdo, mídia e hashes de senha para possibilitar restauração. Guarde-o em local privado.</div>
 
   <div class="settings-grid">
     <section class="card">
@@ -19,7 +27,7 @@
           <label>Usuário<input name="username" required value="<%= values.username || "" %>"></label>
           <label>Nome de exibição<input name="display_name" required value="<%= values.display_name || "" %>"></label>
           <label>E-mail<input type="email" name="email" required value="<%= values.email || "" %>"></label>
-          <label>Senha inicial<input type="password" name="password" minlength="10" required></label>
+          <label>Senha inicial<input type="password" name="password" minlength="12" maxlength="128" required><span class="field-hint">12+ caracteres, com letra e número.</span></label>
           <label>Papel
             <select name="role">
               <option value="collaborator" <%= values.role === "admin" ? "" : "selected" %>>Colaborador</option>
@@ -51,6 +59,7 @@
                         <input type="hidden" name="user_id" value="<%= account.id %>">
                         <button class="link-button"><%= account.active ? "Desativar" : "Ativar" %></button>
                       </form>
+                      · <a href="/usuarios/<%= account.id %>/senha">Redefinir senha</a>
                     <% } %>
                   </td>
                 </tr>
