@@ -7,8 +7,8 @@ test("menu mobile abre como drawer sem tirar o leitor do ponto atual", async ({ 
   await page.evaluate(() => window.scrollTo(0, Math.min(500, document.body.scrollHeight - window.innerHeight)));
   const before = await page.evaluate(() => window.scrollY);
 
-  const toggle = page.getByRole("button", { name: "Abrir menu" });
-  const sidebar = page.getByRole("complementary", { name: "Navegação" });
+  const toggle = page.locator("[data-menu-toggle]");
+  const sidebar = page.locator("#navegacao-lateral");
 
   await expect(toggle).toBeVisible();
   await expect(sidebar).toHaveAttribute("aria-hidden", "true");
@@ -40,7 +40,7 @@ test("logo e interface acompanham a troca animada de tema", async ({ page }) => 
   await page.goto("/");
 
   const root = page.locator("html");
-  const toggle = page.getByRole("button", { name: "Usar tema escuro" });
+  const toggle = page.locator("[data-theme-toggle]");
   const markLetter = page.locator(".brand .mark-letter");
 
   const lightStroke = await markLetter.evaluate((element) => getComputedStyle(element).stroke);
