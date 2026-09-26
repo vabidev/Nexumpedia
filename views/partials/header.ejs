@@ -4,11 +4,22 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title><%= title === "Nexumpedia" ? "Nexumpedia — Conhecimento em conexão" : title + " — Nexumpedia" %></title>
-  <meta name="description" content="Nexumpedia, uma enciclopédia digital de conteúdo editorial revisado.">
+  <meta name="description" content="<%= seo?.description || "Nexumpedia, uma enciclopédia digital de conteúdo editorial revisado." %>">
+  <meta name="robots" content="<%= seo?.robots || "noindex,nofollow" %>">
+  <% if (seo?.canonical) { %><link rel="canonical" href="<%= seo.canonical %>"><% } %>
+  <meta property="og:site_name" content="Nexumpedia">
+  <meta property="og:title" content="<%= title === "Nexumpedia" ? "Nexumpedia — Conhecimento em conexão" : title + " — Nexumpedia" %>">
+  <meta property="og:description" content="<%= seo?.description || "Nexumpedia, uma enciclopédia digital de conteúdo editorial revisado." %>">
+  <meta property="og:type" content="<%= seo?.type || "website" %>">
+  <% if (seo?.canonical) { %><meta property="og:url" content="<%= seo.canonical %>"><% } %>
   <link rel="icon" href="/assets/img/nexumpedia-mark.svg">
   <link rel="stylesheet" href="/assets/css/nexumpedia.css">
+  <% if (seo?.jsonLd) { %>
+    <script type="application/ld+json" nonce="<%= cspNonce %>"><%- JSON.stringify(seo.jsonLd).replace(/</g, "\\u003c") %></script>
+  <% } %>
 </head>
 <body>
+<a class="skip-link" href="#conteudo-principal">Pular para o conteúdo</a>
 <header class="topbar">
   <a class="brand" href="/" aria-label="Nexumpedia, página principal">
     <img src="/assets/img/nexumpedia-mark.svg" alt="">
@@ -38,11 +49,11 @@
     <% } else { %>
       <a href="/login">Entrar</a>
     <% } %>
-    <button class="icon-btn" type="button" data-theme-toggle aria-label="Alternar tema">◐</button>
-    <button class="icon-btn mobile-menu" type="button" data-menu-toggle aria-label="Abrir menu">☰</button>
+    <button class="icon-btn" type="button" data-theme-toggle aria-label="Alternar tema" aria-pressed="false">◐</button>
+    <button class="icon-btn mobile-menu" type="button" data-menu-toggle aria-label="Abrir menu" aria-expanded="false" aria-controls="navegacao-lateral">☰</button>
   </nav>
 </header>
 
 <% for (const flash of flashes || []) { %>
-  <div class="flash <%= flash.type === "error" ? "error" : flash.type === "success" ? "success" : "info" %>"><%= flash.message %></div>
+  <div class="flash <%= flash.type === "error" ? "error" : flash.type === "success" ? "success" : "info" %>" role="status" aria-live="polite"><%= flash.message %></div>
 <% } %>
