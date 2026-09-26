@@ -1,7 +1,7 @@
 <%- include("partials/header", { title, showSearch: false }) %>
 <main id="conteudo-principal" class="auth-shell">
   <section class="auth-card">
-    <img class="auth-logo" src="/assets/img/nexumpedia-mark.svg" alt="">
+    <div class="auth-logo" aria-hidden="true"><%- include("partials/brand-mark") %></div>
     <h1><%= privateLogin ? "Acesso privado" : "Primeiro acesso" %></h1>
     <p class="muted"><%= privateLogin
       ? "Informe sua senha para abrir a área editorial."
