@@ -1707,6 +1707,79 @@ app.get("/historico/:slug", async (req, res, next) => {
   }
 });
 
+app.get("/conta/acesso", requireLogin, (req, res) => {
+  protectPrivateLoginResponse(res);
+  res.render("private-access", {
+    title: req.user.login_path_configured ? "Alterar URL privada" : "Definir URL privada",
+    errors: [],
+    suggestedPath: generatePrivatePath(),
+    configured: req.user.login_path_configured,
+  });
+});
+
+app.post("/conta/acesso", authLimiter, requireLogin, requireCsrf, async (req, res, next) => {
+  try {
+    const { privatePath, errors } = validatePrivatePath(req.body.private_path);
+    const currentPassword = String(req.body.current_password || "");
+
+    if (req.user.login_path_configured) {
+      const { rows } = await pool.query(
+        "SELECT password_hash FROM users WHERE id = $1 AND active = TRUE",
+        [req.user.id],
+      );
+      if (!rows[0] || !(await bcrypt.compare(currentPassword, rows[0].password_hash))) {
+        errors.push("A senha atual está incorreta.");
+      }
+    }
+
+    const pathHash = hashPrivatePath(privatePath);
+    if (!errors.length) {
+      const duplicate = await pool.query(
+        "SELECT id FROM users WHERE login_path_hash = $1 AND id <> $2 LIMIT 1",
+        [pathHash, req.user.id],
+      );
+      if (duplicate.rows.length) {
+        errors.push("Essa rota privada já está em uso.");
+      }
+    }
+
+    if (errors.length) {
+      protectPrivateLoginResponse(res);
+      return res.status(422).render("private-access", {
+        title: req.user.login_path_configured ? "Alterar URL privada" : "Definir URL privada",
+        errors,
+        suggestedPath: privatePath || generatePrivatePath(),
+        configured: req.user.login_path_configured,
+      });
+    }
+
+    await pool.query(
+      `UPDATE users
+       SET login_path_hash = $2, login_path_set_at = NOW(), updated_at = NOW()
+       WHERE id = $1`,
+      [req.user.id, pathHash],
+    );
+
+    const userId = req.user.id;
+    await revokeUserSessions(userId);
+
+    req.session.regenerate((error) => {
+      if (error) return next(error);
+      req.session.userId = userId;
+      flash(
+        req,
+        "success",
+        req.user.login_path_configured
+          ? "Sua URL privada foi alterada. A rota anterior deixou de funcionar."
+          : "URL privada configurada. Salve esse endereço: ele será sua porta de entrada daqui para frente.",
+      );
+      req.session.save(() => res.redirect("/painel"));
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
 app.get("/conta", requireLogin, (req, res) => {
   res.render("account", {
     title: "Minha conta",
@@ -1747,11 +1820,15 @@ app.post("/conta/senha", authLimiter, requireLogin, requireCsrf, async (req, res
       "UPDATE users SET password_hash = $2, updated_at = NOW() WHERE id = $1",
       [req.user.id, passwordHash],
     );
-    await revokeUserSessions(req.user.id);
 
-    req.session.destroy((error) => {
+    const userId = req.user.id;
+    await revokeUserSessions(userId);
+
+    req.session.regenerate((error) => {
       if (error) return next(error);
-      res.redirect("/login?password=changed");
+      req.session.userId = userId;
+      flash(req, "success", "Senha alterada. Todas as sessões anteriores foram encerradas.");
+      req.session.save(() => res.redirect("/conta"));
     });
   } catch (error) {
     next(error);
@@ -1890,7 +1967,10 @@ app.post("/admin/backup", requireAdmin, requireCsrf, async (req, res, next) => {
 app.get("/usuarios", requireAdmin, async (_req, res, next) => {
   try {
     const { rows: users } = await pool.query(
-      "SELECT id, username, display_name, email, role, active, created_at FROM users ORDER BY role, display_name",
+      `SELECT id, username, display_name, email, role, active, created_at,
+              (login_path_hash IS NOT NULL) AS login_path_configured
+       FROM users
+       ORDER BY role, display_name`,
     );
     res.render("users", { title: "Usuários", users, errors: [], values: {} });
   } catch (error) {
@@ -1910,6 +1990,24 @@ app.post("/usuarios", requireAdmin, requireCsrf, async (req, res, next) => {
       return res.redirect("/usuarios");
     }
 
+    if (action === "reset_login_path") {
+      const id = Number(req.body.user_id || 0);
+      if (id === Number(req.user.id)) return res.status(422).send("Altere sua própria URL privada pela página Minha conta.");
+
+      const result = await pool.query(
+        `UPDATE users
+         SET login_path_hash = NULL, login_path_set_at = NULL, updated_at = NOW()
+         WHERE id = $1
+         RETURNING display_name`,
+        [id],
+      );
+      if (!result.rows[0]) return res.status(404).send("Usuário não encontrado.");
+
+      await revokeUserSessions(id);
+      flash(req, "success", `URL privada de ${result.rows[0].display_name} resetada. O próximo acesso deve ser feito por /login.`);
+      return res.redirect("/usuarios");
+    }
+
     const username = String(req.body.username || "").trim();
     const displayName = String(req.body.display_name || "").trim();
     const email = String(req.body.email || "").trim().toLowerCase();
@@ -1925,7 +2023,10 @@ app.post("/usuarios", requireAdmin, requireCsrf, async (req, res, next) => {
 
     if (errors.length) {
       const { rows: users } = await pool.query(
-        "SELECT id, username, display_name, email, role, active, created_at FROM users ORDER BY role, display_name",
+        `SELECT id, username, display_name, email, role, active, created_at,
+                (login_path_hash IS NOT NULL) AS login_path_configured
+         FROM users
+         ORDER BY role, display_name`,
       );
       return res.status(422).render("users", {
         title: "Usuários",
@@ -1941,7 +2042,7 @@ app.post("/usuarios", requireAdmin, requireCsrf, async (req, res, next) => {
       [username, displayName, email, await bcrypt.hash(password, 12), role],
     );
 
-    flash(req, "success", "Usuário criado com sucesso.");
+    flash(req, "success", "Usuário criado. O primeiro acesso dele deve ser feito por /login; depois será obrigatório definir uma URL privada.");
     res.redirect("/usuarios");
   } catch (error) {
     if (error.code === "23505") {
