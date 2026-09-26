@@ -43,10 +43,6 @@ for (const column of ["categories", "references_snapshot", "infobox_snapshot"]) 
   }
 }
 
-console.log("PostgreSQL migrations valid.");
-await pool.end();
-
-
 const { rows: userColumns } = await pool.query(
   `SELECT column_name
    FROM information_schema.columns
@@ -60,3 +56,6 @@ for (const column of ["login_path_hash", "login_path_set_at"]) {
     throw new Error("Coluna de login privado ausente em users: " + column);
   }
 }
+
+console.log("PostgreSQL migrations valid.");
+await pool.end();
