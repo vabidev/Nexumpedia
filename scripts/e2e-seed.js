@@ -33,7 +33,8 @@ try {
 
   const passwordHash = await bcrypt.hash("AdminE2E12345!", 12);
   const adminPrivatePath = "admin-e2e-private-9f7a2c4d6e8b";
-  const adminPrivatePathHash = crypto.createHash("sha256").update(adminPrivatePath).digest("hex");
+  const loginPathSecret = process.env.LOGIN_PATH_SECRET || "nexumpedia-local-login-path-secret";
+  const adminPrivatePathHash = crypto.createHmac("sha256", loginPathSecret).update(adminPrivatePath).digest("hex");
   const admin = (await client.query(
     `INSERT INTO users
       (username, display_name, email, password_hash, role, login_path_hash, login_path_set_at)
