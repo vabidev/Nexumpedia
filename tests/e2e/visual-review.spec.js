@@ -19,6 +19,13 @@ test("captura visual da interface para revisão humana", async ({ page }) => {
     localStorage.setItem("nexumpedia-theme", "light");
   });
   await page.reload();
+
+  const skipLink = page.locator(".skip-link");
+  const skipBox = await skipLink.boundingBox();
+  expect(skipBox).not.toBeNull();
+  expect(skipBox.width).toBeLessThanOrEqual(1);
+  expect(skipBox.height).toBeLessThanOrEqual(1);
+
   await page.screenshot({ path: "visual-review/mobile-light.png", fullPage: false });
 
   await page.goto("/artigo/artigo-inicial-e2e");
