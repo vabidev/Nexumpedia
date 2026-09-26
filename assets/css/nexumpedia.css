@@ -335,3 +335,12 @@ label input,label textarea,label select{display:block;margin-top:5px;font-weight
 .skip-link:focus{transform:translateY(0)}
 :focus-visible{outline:3px solid var(--link);outline-offset:2px}
 .featured-title{margin-top:0}
+
+.private-access-card{max-width:610px}
+.private-path-input{display:flex;align-items:center;border:1px solid var(--border);background:var(--bg)}
+.private-path-input span{padding:8px 0 8px 10px;color:var(--muted);font-family:ui-monospace,SFMono-Regular,Consolas,monospace}
+.private-path-input input{border:0;box-shadow:none;min-width:0;font-family:ui-monospace,SFMono-Regular,Consolas,monospace}
+.private-path-input:focus-within{outline:3px solid var(--link);outline-offset:2px}
+.private-path-input input:focus-visible{outline:0}
+.account-access-block{border:1px solid var(--border);background:var(--surface);padding:12px;margin:0 0 20px}
+.account-access-block p{margin:5px 0 10px}
