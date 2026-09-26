@@ -2,6 +2,7 @@ import crypto from "node:crypto";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import express from "express";
+import ejs from "ejs";
 import session from "express-session";
 import connectPgSimple from "connect-pg-simple";
 import bcrypt from "bcryptjs";
@@ -102,6 +103,7 @@ if (production) {
 }
 
 app.disable("x-powered-by");
+app.engine("ejs", ejs.__express);
 app.set("view engine", "ejs");
 app.set("views", path.join(root, "views"));
 
@@ -184,7 +186,7 @@ app.use(session({
   store: new PgSession({
     pool,
     tableName: "user_sessions",
-    createTableIfMissing: true,
+    createTableIfMissing: false,
   }),
   secret: sessionSecret,
   resave: false,
