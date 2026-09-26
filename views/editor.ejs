@@ -18,6 +18,19 @@
     </div>
   <% } %>
 
+  <% if (typeof latestReview !== "undefined" && latestReview) { %>
+    <div class="review-editor-status <%= latestReview.status %>">
+      <div>
+        <strong>Última revisão: <%= reviewStatusLabel(latestReview.status) %></strong>
+        <span class="meta">Enviada em <%= formatDate(latestReview.created_at) %>.</span>
+        <% if (latestReview.status === "changes_requested" && latestReview.decision_note) { %>
+          <p><%= latestReview.decision_note %></p>
+        <% } %>
+      </div>
+      <a href="/revisao/<%= latestReview.id %>">Abrir revisão →</a>
+    </div>
+  <% } %>
+
   <% if (errors.length) { %>
     <div class="form-errors"><% for (const error of errors) { %><div><%= error %></div><% } %></div>
   <% } %>
@@ -185,10 +198,17 @@
       </template>
     </section>
 
+    <section class="review-submit-box">
+      <label>Nota para o revisor
+        <textarea name="review_note" rows="3" maxlength="1000" placeholder="Opcional: explique o que mudou ou o que merece atenção."><%= typeof reviewNote !== "undefined" ? reviewNote : "" %></textarea>
+      </label>
+      <span class="field-hint">Esta nota é usada quando você escolhe “Enviar para revisão”.</span>
+    </section>
+
     <div class="editor-actions">
       <button class="secondary" type="submit" formaction="/editor/preview" formtarget="_blank">Pré-visualizar</button>
       <button class="secondary" type="submit" name="action" value="save">Salvar rascunho</button>
-      <button class="secondary" type="submit" name="action" value="review">Enviar para revisão</button>
+      <button class="secondary" type="submit" name="action" value="review"><%= typeof latestReview !== "undefined" && latestReview?.status === "pending" ? "Atualizar revisão" : "Enviar para revisão" %></button>
       <% if (user.role === "admin") { %>
         <button class="primary" type="submit" name="action" value="publish">Publicar</button>
         <% if (article?.id) { %><button class="danger" type="submit" name="action" value="archive">Arquivar</button><% } %>
