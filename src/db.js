@@ -24,6 +24,8 @@ export async function migrate() {
       password_hash TEXT NOT NULL,
       role VARCHAR(20) NOT NULL CHECK (role IN ('admin','collaborator')),
       active BOOLEAN NOT NULL DEFAULT TRUE,
+      login_path_hash CHAR(64),
+      login_path_set_at TIMESTAMPTZ,
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
@@ -137,11 +139,15 @@ export async function migrate() {
       position INTEGER NOT NULL DEFAULT 0
     );
 
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS login_path_hash CHAR(64);
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS login_path_set_at TIMESTAMPTZ;
     ALTER TABLE article_versions ADD COLUMN IF NOT EXISTS categories TEXT NOT NULL DEFAULT '';
     ALTER TABLE article_versions ADD COLUMN IF NOT EXISTS references_snapshot JSONB NOT NULL DEFAULT '[]'::jsonb;
     ALTER TABLE article_versions ADD COLUMN IF NOT EXISTS infobox_snapshot JSONB NOT NULL DEFAULT '{}'::jsonb;
 
     CREATE UNIQUE INDEX IF NOT EXISTS idx_users_username_lower ON users(LOWER(username));
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_users_login_path_hash
+      ON users(login_path_hash) WHERE login_path_hash IS NOT NULL;
     CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email_lower ON users(LOWER(email));
     CREATE INDEX IF NOT EXISTS idx_articles_status ON articles(status);
     CREATE INDEX IF NOT EXISTS idx_articles_author ON articles(author_id);
