@@ -1,3 +1,4 @@
+import crypto from "node:crypto";
 import bcrypt from "bcryptjs";
 import { migrate, pool, saveArticleVersion, syncArticleCategories } from "../src/db.js";
 
@@ -31,11 +32,14 @@ try {
   }
 
   const passwordHash = await bcrypt.hash("AdminE2E12345!", 12);
+  const adminPrivatePath = "admin-e2e-private-9f7a2c4d6e8b";
+  const adminPrivatePathHash = crypto.createHash("sha256").update(adminPrivatePath).digest("hex");
   const admin = (await client.query(
-    `INSERT INTO users (username, display_name, email, password_hash, role)
-     VALUES ('admin_e2e','Administrador E2E','admin.e2e@example.test',$1,'admin')
+    `INSERT INTO users
+      (username, display_name, email, password_hash, role, login_path_hash, login_path_set_at)
+     VALUES ('admin_e2e','Administrador E2E','admin.e2e@example.test',$1,'admin',$2,NOW())
      RETURNING id`,
-    [passwordHash],
+    [passwordHash, adminPrivatePathHash],
   )).rows[0];
 
   const article = (await client.query(
