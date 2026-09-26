@@ -207,6 +207,15 @@ app.use((req, res, next) => {
   next();
 });
 
+app.use((req, res, next) => {
+  if (!req.user || req.user.login_path_configured) return next();
+
+  const allowed = req.path === "/conta/acesso" || req.path === "/logout";
+  if (allowed) return next();
+
+  res.redirect("/conta/acesso");
+});
+
 app.locals.statusLabel = statusLabel;
 app.locals.formatDate = formatDate;
 app.locals.reviewStatusLabel = (status) => ({
@@ -224,6 +233,51 @@ function validateNewPassword(password) {
     errors.push("Use pelo menos uma letra e um número.");
   }
   return errors;
+}
+
+const reservedPrivatePaths = new Set([
+  "admin", "artigo", "assets", "categoria", "conta", "editor", "health",
+  "historico", "install", "login", "logout", "media", "midia", "painel",
+  "revisao", "revisoes", "robots.txt", "sitemap.xml", "sobre", "usuarios",
+]);
+
+function normalizePrivatePath(value = "") {
+  return String(value)
+    .trim()
+    .replace(/^\/+|\/+$/g, "")
+    .toLowerCase();
+}
+
+function validatePrivatePath(value) {
+  const privatePath = normalizePrivatePath(value);
+  const errors = [];
+
+  if (!/^[a-z0-9][a-z0-9_-]{19,63}$/.test(privatePath)) {
+    errors.push("A rota privada deve ter entre 20 e 64 caracteres e usar apenas letras minúsculas, números, hífen ou sublinhado.");
+  }
+  if (!/[a-z]/.test(privatePath) || !/\d/.test(privatePath)) {
+    errors.push("A rota privada precisa misturar letras e números.");
+  }
+  if (reservedPrivatePaths.has(privatePath)) {
+    errors.push("Essa rota é reservada pelo sistema.");
+  }
+
+  return { privatePath, errors };
+}
+
+function hashPrivatePath(privatePath) {
+  return crypto.createHash("sha256").update(privatePath).digest("hex");
+}
+
+function generatePrivatePath() {
+  return `porta-${crypto.randomBytes(14).toString("hex")}`;
+}
+
+function protectPrivateLoginResponse(res) {
+  res.locals.seo.robots = "noindex,nofollow";
+  res.set("Cache-Control", "no-store");
+  res.set("Referrer-Policy", "no-referrer");
+  res.set("X-Robots-Tag", "noindex, nofollow");
 }
 
 async function revokeUserSessions(userId) {
@@ -514,7 +568,7 @@ app.get("/categoria/:slug", async (req, res, next) => {
 
 app.get("/install", async (_req, res, next) => {
   try {
-    if (await hasUsers()) return res.redirect("/login");
+    if (await hasUsers()) return res.redirect("/");
     res.render("install", { title: "Instalação", errors: [], values: {} });
   } catch (error) {
     next(error);
@@ -529,7 +583,7 @@ app.post("/install", authLimiter, requireCsrf, async (req, res, next) => {
   const confirm = String(req.body.password_confirm || "");
   const errors = [];
 
-  if (await hasUsers()) return res.redirect("/login");
+  if (await hasUsers()) return res.redirect("/");
   if (!/^[A-Za-z0-9_.-]{3,30}$/.test(username)) errors.push("Usuário inválido.");
   if (displayName.length < 2 || displayName.length > 80) errors.push("Nome de exibição inválido.");
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) errors.push("E-mail inválido.");
@@ -585,8 +639,8 @@ A Nexumpedia possui nome, marca e identidade visual próprios, preservando uma i
     req.session.regenerate((error) => {
       if (error) return next(error);
       req.session.userId = adminId;
-      flash(req, "success", "Nexumpedia instalada. Sua conta de administrador foi criada.");
-      req.session.save(() => res.redirect("/painel"));
+      flash(req, "success", "Nexumpedia instalada. Agora defina sua URL privada de acesso.");
+      req.session.save(() => res.redirect("/conta/acesso"));
     });
   } catch (error) {
     await client.query("ROLLBACK");
@@ -599,14 +653,24 @@ A Nexumpedia possui nome, marca e identidade visual próprios, preservando uma i
 app.get("/login", async (req, res, next) => {
   try {
     if (!(await hasUsers())) return res.redirect("/install");
-    if (req.user) return res.redirect("/painel");
+    if (req.user) {
+      return res.redirect(req.user.login_path_configured ? "/painel" : "/conta/acesso");
+    }
+
+    const { rows } = await pool.query(
+      "SELECT EXISTS(SELECT 1 FROM users WHERE active = TRUE AND login_path_hash IS NULL) AS available",
+    );
+    if (!rows[0].available) {
+      return res.status(404).render("404", { title: "Página não encontrada" });
+    }
+
+    protectPrivateLoginResponse(res);
     res.render("login", {
-      title: "Entrar",
+      title: "Primeiro acesso",
       error: null,
       identity: "",
-      notice: req.query.password === "changed"
-        ? "Senha alterada. Entre novamente com a nova senha."
-        : null,
+      notice: null,
+      privateLogin: false,
     });
   } catch (error) {
     next(error);
@@ -628,12 +692,14 @@ app.post("/login", authLimiter, requireCsrf, async (req, res, next) => {
         error: "Muitas tentativas. Aguarde alguns minutos.",
         identity,
         notice: null,
+        privateLogin: false,
       });
     }
 
     const { rows } = await pool.query(
       `SELECT * FROM users
        WHERE active = TRUE
+         AND login_path_hash IS NULL
          AND (LOWER(username) = LOWER($1) OR LOWER(email) = LOWER($1))
        LIMIT 1`,
       [identity],
@@ -647,14 +713,15 @@ app.post("/login", authLimiter, requireCsrf, async (req, res, next) => {
         error: "Usuário/e-mail ou senha incorretos.",
         identity,
         notice: null,
+        privateLogin: false,
       });
     }
 
     req.session.regenerate((error) => {
       if (error) return next(error);
       req.session.userId = user.id;
-      flash(req, "success", `Bem-vindo de volta, ${user.display_name}.`);
-      req.session.save(() => res.redirect("/painel"));
+      flash(req, "success", "Primeiro acesso confirmado. Defina agora sua URL privada.");
+      req.session.save(() => res.redirect("/conta/acesso"));
     });
   } catch (error) {
     next(error);
