@@ -1,0 +1,71 @@
+<%- include("partials/header", { title, showSearch: false }) %>
+<main class="admin-shell">
+  <div class="admin-header">
+    <div>
+      <div class="meta">Administração editorial</div>
+      <h1>Fila de revisão</h1>
+    </div>
+    <a class="secondary" href="/painel">← Painel</a>
+  </div>
+
+  <section class="card">
+    <div class="card-title">Aguardando decisão <span class="badge"><%= pending.length %></span></div>
+    <div class="card-body no-pad">
+      <div class="table-wrap borderless">
+        <table>
+          <thead>
+            <tr><th>Artigo</th><th>Enviado por</th><th>Data</th><th>Nota</th><th></th></tr>
+          </thead>
+          <tbody>
+          <% if (!pending.length) { %>
+            <tr><td colspan="5">Nenhum artigo aguardando revisão.</td></tr>
+          <% } else { %>
+            <% for (const review of pending) { %>
+              <tr>
+                <td>
+                  <strong><%= review.article_title %></strong><br>
+                  <span class="meta">/<%= review.article_slug %></span>
+                </td>
+                <td><%= review.submitted_by_name %></td>
+                <td><%= formatDate(review.created_at) %></td>
+                <td><%= review.submission_note || "—" %></td>
+                <td><a href="/revisao/<%= review.id %>">Revisar →</a></td>
+              </tr>
+            <% } %>
+          <% } %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="card-title">Revisões recentes</div>
+    <div class="card-body no-pad">
+      <div class="table-wrap borderless">
+        <table>
+          <thead>
+            <tr><th>Artigo</th><th>Estado</th><th>Autor</th><th>Revisor</th><th>Encerrada</th><th></th></tr>
+          </thead>
+          <tbody>
+          <% if (!recent.length) { %>
+            <tr><td colspan="6">Nenhuma revisão encerrada ainda.</td></tr>
+          <% } else { %>
+            <% for (const review of recent) { %>
+              <tr>
+                <td><strong><%= review.article_title %></strong></td>
+                <td><span class="badge <%= review.status === "approved" ? "good" : "" %>"><%= reviewStatusLabel(review.status) %></span></td>
+                <td><%= review.submitted_by_name %></td>
+                <td><%= review.reviewer_name || "—" %></td>
+                <td><%= formatDate(review.resolved_at) %></td>
+                <td><a href="/revisao/<%= review.id %>">Abrir</a></td>
+              </tr>
+            <% } %>
+          <% } %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+</main>
+<%- include("partials/footer") %>
