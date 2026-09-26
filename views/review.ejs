@@ -13,7 +13,7 @@
     <div class="button-row">
       <% if (user.role === "admin") { %><a class="secondary" href="/revisoes">← Fila</a><% } else { %><a class="secondary" href="/painel">← Painel</a><% } %>
       <a class="secondary" href="/historico/<%= encodeURIComponent(review.article_slug) %>">Histórico</a>
-      <% if (user.role === "admin" || Number(review.article_author_id) === Number(user.id)) { %>
+      <% if (user.role === "admin" || (Number(review.article_author_id) === Number(user.id) && ["draft","review"].includes(review.article_status))) { %>
         <a class="secondary" href="/editor?id=<%= review.article_id %>">Editor</a>
       <% } %>
     </div>
