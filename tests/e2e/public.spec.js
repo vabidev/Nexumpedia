@@ -4,6 +4,7 @@ test("leitor encontra e abre um artigo publicado", async ({ page }) => {
   await page.goto("/");
 
   await expect(page.getByRole("heading", { name: "Bem-vindo à Nexumpedia" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Entrar" })).toHaveCount(0);
   await page.getByRole("link", { name: "Artigo Inicial E2E" }).first().click();
 
   await expect(page.getByRole("heading", { name: "Artigo Inicial E2E", level: 1 })).toBeVisible();
