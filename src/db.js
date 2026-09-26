@@ -89,6 +89,27 @@ export async function migrate() {
       UNIQUE(article_id, citation_key)
     );
 
+    CREATE TABLE IF NOT EXISTS article_reviews (
+      id BIGSERIAL PRIMARY KEY,
+      article_id BIGINT NOT NULL REFERENCES articles(id) ON DELETE CASCADE,
+      submitted_by BIGINT NOT NULL REFERENCES users(id),
+      reviewer_id BIGINT REFERENCES users(id),
+      status VARCHAR(24) NOT NULL DEFAULT 'pending'
+        CHECK (status IN ('pending','approved','changes_requested','cancelled')),
+      submission_note VARCHAR(1000) NOT NULL DEFAULT '',
+      decision_note VARCHAR(2000) NOT NULL DEFAULT '',
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      resolved_at TIMESTAMPTZ
+    );
+
+    CREATE TABLE IF NOT EXISTS article_review_comments (
+      id BIGSERIAL PRIMARY KEY,
+      review_id BIGINT NOT NULL REFERENCES article_reviews(id) ON DELETE CASCADE,
+      author_id BIGINT NOT NULL REFERENCES users(id),
+      body VARCHAR(2000) NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+
     CREATE TABLE IF NOT EXISTS media (
       id BIGSERIAL PRIMARY KEY,
       original_name TEXT NOT NULL,
@@ -132,6 +153,12 @@ export async function migrate() {
       ON article_references(article_id, LOWER(citation_key));
     CREATE INDEX IF NOT EXISTS idx_article_infobox_fields_article
       ON article_infobox_fields(article_id, position, id);
+    CREATE INDEX IF NOT EXISTS idx_article_reviews_queue
+      ON article_reviews(status, created_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_article_reviews_article
+      ON article_reviews(article_id, created_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_article_review_comments_review
+      ON article_review_comments(review_id, created_at ASC);
   `);
 }
 
@@ -398,4 +425,34 @@ export async function getArticleInfobox(articleId) {
     ...infobox,
     fields: fieldsResult.rows,
   };
+}
+
+
+export async function getActiveReview(articleId) {
+  const { rows } = await pool.query(
+    `SELECT ar.*,
+            submitter.display_name AS submitted_by_name,
+            reviewer.display_name AS reviewer_name
+     FROM article_reviews ar
+     JOIN users submitter ON submitter.id = ar.submitted_by
+     LEFT JOIN users reviewer ON reviewer.id = ar.reviewer_id
+     WHERE ar.article_id = $1 AND ar.status = 'pending'
+     ORDER BY ar.created_at DESC
+     LIMIT 1`,
+    [articleId],
+  );
+  return rows[0] || null;
+}
+
+export async function getReviewComments(reviewId) {
+  const { rows } = await pool.query(
+    `SELECT arc.id, arc.body, arc.created_at, arc.author_id,
+            u.display_name AS author_name, u.role AS author_role
+     FROM article_review_comments arc
+     JOIN users u ON u.id = arc.author_id
+     WHERE arc.review_id = $1
+     ORDER BY arc.created_at ASC, arc.id ASC`,
+    [reviewId],
+  );
+  return rows;
 }
