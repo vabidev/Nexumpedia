@@ -42,3 +42,18 @@ O CI cobre headers de segurança, CSP, request IDs, health checks, sintaxe, temp
 - o repositório ainda não possui lockfile versionado, então a 1.0 deve fechar a reprodutibilidade das dependências.
 
 A revisão deve ser repetida depois dos testes no staging real.
+
+
+## Hardening 0.9.1 — rotas privadas de login
+
+A interface pública deixou de exibir qualquer link de entrada.
+
+O endpoint `/login` agora serve somente contas que ainda não configuraram a rota privada de primeiro acesso. Quando não existe nenhuma conta aguardando configuração, `/login` responde como página inexistente.
+
+Cada conta passa a usar uma rota privada de nível raiz escolhida pelo próprio usuário. O servidor não armazena a rota em texto puro: persiste apenas um HMAC-SHA-256 usando `LOGIN_PATH_SECRET`.
+
+A rota privada é uma camada adicional contra varredura automática e brute force oportunista. Ela **não substitui senha forte, rate limiting, CSRF ou outros controles de autenticação**.
+
+Rotas privadas podem aparecer no histórico do navegador, em bookmarks e em logs de infraestrutura. Devem ser tratadas como informação sensível, mas não como substituto de senha.
+
+Administradores podem resetar a rota de outra conta; isso encerra as sessões existentes e reabre o fluxo de primeiro acesso por `/login`.
