@@ -1,12 +1,22 @@
 (() => {
   const root = document.documentElement;
-  const savedTheme = localStorage.getItem("nexumpedia-theme");
-  if (savedTheme === "dark") root.dataset.theme = "dark";
+  let themeTransitionTimer;
+
+  function syncThemeButtons() {
+    const dark = root.dataset.theme === "dark";
+    document.querySelectorAll("[data-theme-toggle]").forEach(btn => {
+      btn.setAttribute("aria-pressed", dark ? "true" : "false");
+      btn.setAttribute("aria-label", dark ? "Usar tema claro" : "Usar tema escuro");
+    });
+  }
+
+  syncThemeButtons();
 
   document.querySelectorAll("[data-theme-toggle]").forEach(btn => {
-    btn.setAttribute("aria-pressed", root.dataset.theme === "dark" ? "true" : "false");
     btn.addEventListener("click", () => {
+      root.classList.add("theme-transitioning");
       const dark = root.dataset.theme === "dark";
+
       if (dark) {
         delete root.dataset.theme;
         localStorage.setItem("nexumpedia-theme", "light");
@@ -14,19 +24,86 @@
         root.dataset.theme = "dark";
         localStorage.setItem("nexumpedia-theme", "dark");
       }
-      btn.setAttribute("aria-pressed", root.dataset.theme === "dark" ? "true" : "false");
+
+      syncThemeButtons();
+      window.clearTimeout(themeTransitionTimer);
+      themeTransitionTimer = window.setTimeout(() => {
+        root.classList.remove("theme-transitioning");
+      }, 340);
     });
   });
 
-  document.querySelectorAll("[data-menu-toggle]").forEach(btn => {
-    btn.addEventListener("click", () => {
-      const nav = document.querySelector(".sidebar");
-      if (nav) {
-        nav.classList.toggle("open");
-        btn.setAttribute("aria-expanded", nav.classList.contains("open") ? "true" : "false");
+  const sidebar = document.querySelector(".sidebar");
+  const menuToggles = [...document.querySelectorAll("[data-menu-toggle]")];
+  const menuBackdrop = document.querySelector("[data-menu-backdrop]");
+  const menuClose = document.querySelector("[data-menu-close]");
+  let menuTrigger = null;
+
+  function mobileMenuMode() {
+    return window.matchMedia("(max-width: 820px)").matches;
+  }
+
+  function setMenuState(open, { restoreFocus = false } = {}) {
+    if (!sidebar) return;
+
+    sidebar.classList.toggle("open", open);
+    menuBackdrop?.classList.toggle("open", open);
+    document.body.classList.toggle("menu-open", open);
+    menuToggles.forEach(btn => {
+      btn.setAttribute("aria-expanded", open ? "true" : "false");
+      btn.setAttribute("aria-label", open ? "Fechar menu" : "Abrir menu");
+    });
+
+    if (mobileMenuMode()) {
+      sidebar.setAttribute("aria-hidden", open ? "false" : "true");
+    } else {
+      sidebar.removeAttribute("aria-hidden");
+    }
+
+    if (open) {
+      menuClose?.focus({ preventScroll: true });
+    } else if (restoreFocus && menuTrigger) {
+      menuTrigger.focus({ preventScroll: true });
+    }
+  }
+
+  if (!sidebar) {
+    menuToggles.forEach(btn => { btn.hidden = true; });
+    if (menuBackdrop) menuBackdrop.hidden = true;
+  } else {
+    if (mobileMenuMode()) sidebar.setAttribute("aria-hidden", "true");
+
+    menuToggles.forEach(btn => {
+      btn.addEventListener("click", () => {
+        menuTrigger = btn;
+        setMenuState(!sidebar.classList.contains("open"), { restoreFocus: true });
+      });
+    });
+
+    menuClose?.addEventListener("click", () => setMenuState(false, { restoreFocus: true }));
+    menuBackdrop?.addEventListener("click", () => setMenuState(false, { restoreFocus: true }));
+
+    sidebar.querySelectorAll("a").forEach(link => {
+      link.addEventListener("click", () => {
+        if (mobileMenuMode()) setMenuState(false);
+      });
+    });
+
+    document.addEventListener("keydown", event => {
+      if (event.key === "Escape" && sidebar.classList.contains("open")) {
+        setMenuState(false, { restoreFocus: true });
       }
     });
-  });
+
+    window.addEventListener("resize", () => {
+      if (!mobileMenuMode()) {
+        setMenuState(false);
+        sidebar.removeAttribute("aria-hidden");
+      } else if (!sidebar.classList.contains("open")) {
+        sidebar.setAttribute("aria-hidden", "true");
+      }
+    });
+  }
 
   const referenceList = document.querySelector("[data-reference-list]");
   const referenceTemplate = document.querySelector("#reference-row-template");
