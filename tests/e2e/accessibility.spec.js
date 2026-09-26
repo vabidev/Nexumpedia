@@ -22,7 +22,8 @@ test("artigo público não tem violações WCAG automatizáveis", async ({ page 
   await expectNoWcagViolations(page);
 });
 
-test("login não tem violações WCAG automatizáveis", async ({ page }) => {
-  await page.goto("/login");
+test("login privado não tem violações WCAG automatizáveis", async ({ page }) => {
+  await page.goto("/admin-e2e-private-9f7a2c4d6e8b");
+  await expect(page.getByRole("heading", { name: "Acesso privado" })).toBeVisible();
   await expectNoWcagViolations(page);
 });
