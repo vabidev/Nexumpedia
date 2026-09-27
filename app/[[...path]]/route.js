@@ -46,7 +46,9 @@ function outboundHeaders(request) {
 
 async function proxy(request) {
   const origin = await getExpressOrigin();
-  const target = new URL(request.nextUrl.pathname + request.nextUrl.search, origin);
+  const target = new URL(origin);
+  target.pathname = request.nextUrl.pathname;
+  target.search = request.nextUrl.search;
   const method = request.method.toUpperCase();
   const hasBody = !["GET", "HEAD"].includes(method);
 
