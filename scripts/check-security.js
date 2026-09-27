@@ -81,6 +81,19 @@ try {
   const ready = await fetch(`http://127.0.0.1:${port}/health/ready`);
   assert.equal(ready.status, 200);
   assert.deepEqual(await ready.json(), { ok: true, database: "ready" });
+  assert.equal(ready.headers.get("set-cookie"), null, "Health check não deve criar sessão.");
+
+  const publicPage = await fetch(`http://127.0.0.1:${port}/`);
+  assert.equal(publicPage.status, 200);
+  assert.equal(publicPage.headers.get("set-cookie"), null, "Leitura pública não deve criar sessão.");
+
+  const bridge = fs.readFileSync(path.join(root, "app", "[[...path]]", "route.js"), "utf8");
+  assert.match(bridge, /const target = new URL\(origin\)/);
+  assert.doesNotMatch(
+    bridge,
+    /new URL\(request\.nextUrl\.pathname/,
+    "O bridge não pode resolver a URL de destino a partir de um caminho controlado pelo cliente.",
+  );
 
   console.log("Security checks passed.");
 } finally {
