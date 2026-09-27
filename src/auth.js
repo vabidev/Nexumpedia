@@ -27,11 +27,21 @@ export async function attachUser(req, res, next) {
   }
 }
 
-export function ensureCsrf(req, res, next) {
+export function issueCsrf(req, res) {
   if (!req.session.csrf) {
     req.session.csrf = crypto.randomBytes(32).toString("hex");
   }
   res.locals.csrf = req.session.csrf;
+  return req.session.csrf;
+}
+
+export function ensureCsrf(req, res, next) {
+  const anonymousAuthPage = req.path === "/install" || req.path === "/login";
+  if (req.user || anonymousAuthPage) {
+    issueCsrf(req, res);
+  } else {
+    res.locals.csrf = req.session.csrf || "";
+  }
   next();
 }
 
