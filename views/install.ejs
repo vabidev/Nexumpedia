@@ -13,6 +13,12 @@
 
     <form method="post" class="stack-form" novalidate>
       <input type="hidden" name="_csrf" value="<%= csrf %>">
+      <% if (requireInstallKey) { %>
+        <label>Chave de instalação
+          <input type="password" name="install_key" required autocomplete="off" maxlength="256" aria-describedby="install-key-help">
+        </label>
+        <p class="field-help" id="install-key-help">Use a chave definida em <code>INSTALL_SECRET</code> no ambiente de produção.</p>
+      <% } %>
       <label>Usuário
         <input name="username" required autocomplete="username" value="<%= values.username || "" %>">
       </label>
