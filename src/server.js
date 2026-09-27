@@ -222,6 +222,11 @@ app.use((req, res, next) => {
   const searchPage = Boolean(req.query?.q);
   const indexable = publicIndexing && !privatePage && !searchPage;
 
+  if (privatePage || req.user) {
+    res.set("Cache-Control", "no-store");
+    res.set("X-Robots-Tag", "noindex, nofollow");
+  }
+
   res.locals.seo = {
     description: "Nexumpedia, uma enciclopédia digital com conteúdo editorial revisado.",
     canonical: absoluteUrl(req, req.path),
@@ -626,6 +631,14 @@ app.post("/install", authLimiter, requireCsrf, async (req, res, next) => {
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
+    await client.query("SELECT pg_advisory_xact_lock($1)", [73842191]);
+
+    const existingUser = await client.query("SELECT 1 FROM users LIMIT 1");
+    if (existingUser.rows.length) {
+      await client.query("ROLLBACK");
+      return res.redirect("/");
+    }
+
     const passwordHash = await bcrypt.hash(password, 12);
     const userResult = await client.query(
       `INSERT INTO users (username, display_name, email, password_hash, role)
@@ -2269,12 +2282,21 @@ app.use((_req, res) => {
   res.status(404).render("404", { title: "Página não encontrada" });
 });
 
+function safeRequestPathForLog(req) {
+  const pathname = String(req.path || "/");
+  if (/^\/[a-z0-9][a-z0-9_-]{19,63}\/?$/.test(pathname)) {
+    return "/[private-path]";
+  }
+  return pathname;
+}
+
 app.use((error, req, res, _next) => {
+  res.locals.seo ??= {};
   res.locals.seo.robots = "noindex,nofollow";
   console.error({
     requestId: req.requestId,
     method: req.method,
-    path: req.originalUrl,
+    path: safeRequestPathForLog(req),
     error: error?.stack || error,
   });
   if (error instanceof multer.MulterError) {
