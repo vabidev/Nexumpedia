@@ -11,7 +11,7 @@
       </div>
     <% } %>
 
-    <form method="post" class="stack-form">
+    <form method="post" class="stack-form" novalidate>
       <input type="hidden" name="_csrf" value="<%= csrf %>">
       <label>Usuário
         <input name="username" required autocomplete="username" value="<%= values.username || "" %>">
@@ -23,10 +23,11 @@
         <input type="email" name="email" required autocomplete="email" value="<%= values.email || "" %>">
       </label>
       <label>Senha
-        <input type="password" name="password" required autocomplete="new-password" minlength="12" maxlength="128">
+        <input type="password" name="password" required autocomplete="new-password" maxlength="128" aria-describedby="password-help">
       </label>
+      <p class="field-help" id="password-help">Use pelo menos 12 caracteres, incluindo uma letra e um número.</p>
       <label>Confirmar senha
-        <input type="password" name="password_confirm" required autocomplete="new-password" minlength="12" maxlength="128">
+        <input type="password" name="password_confirm" required autocomplete="new-password" maxlength="128">
       </label>
       <button class="primary" type="submit">Criar administrador e instalar</button>
     </form>
