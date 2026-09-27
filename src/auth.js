@@ -36,8 +36,7 @@ export function issueCsrf(req, res) {
 }
 
 export function ensureCsrf(req, res, next) {
-  const anonymousAuthPage = req.path === "/install" || req.path === "/login";
-  if (req.user || anonymousAuthPage) {
+  if (req.user) {
     issueCsrf(req, res);
   } else {
     res.locals.csrf = req.session.csrf || "";
