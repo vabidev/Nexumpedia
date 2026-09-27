@@ -43,6 +43,7 @@ import {
   ensureCsrf,
   exposeFlash,
   flash,
+  issueCsrf,
   requireAdmin,
   requireCsrf,
   requireLogin,
@@ -69,7 +70,10 @@ const sessionSecret = process.env.SESSION_SECRET
   || (production ? derivedProductionSecret("nexumpedia-session") : "nexumpedia-local-development-only");
 const loginPathSecret = process.env.LOGIN_PATH_SECRET
   || (production ? derivedProductionSecret("nexumpedia-login-path") : "nexumpedia-local-login-path-secret");
-const configuredSiteUrl = String(process.env.SITE_URL || "").trim().replace(/\/+$/, "");
+const vercelProductionUrl = process.env.VERCEL_PROJECT_PRODUCTION_URL
+  ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
+  : "";
+const configuredSiteUrl = String(process.env.SITE_URL || vercelProductionUrl).trim().replace(/\/+$/, "");
 const publicIndexing = String(process.env.PUBLIC_INDEXING || "false").toLowerCase() === "true";
 
 if (production && publicIndexing && !configuredSiteUrl) {
@@ -2209,6 +2213,7 @@ app.get("/:privatePath", async (req, res, next) => {
 
     if (!rows[0]) return next();
 
+    issueCsrf(req, res);
     protectPrivateLoginResponse(res);
     res.render("login", {
       title: "Acesso privado",
