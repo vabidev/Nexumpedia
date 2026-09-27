@@ -70,6 +70,7 @@ const sessionSecret = process.env.SESSION_SECRET
   || (production ? derivedProductionSecret("nexumpedia-session") : "nexumpedia-local-development-only");
 const loginPathSecret = process.env.LOGIN_PATH_SECRET
   || (production ? derivedProductionSecret("nexumpedia-login-path") : "nexumpedia-local-login-path-secret");
+const installSecret = String(process.env.INSTALL_SECRET || "");
 const vercelProductionUrl = process.env.VERCEL_PROJECT_PRODUCTION_URL
   ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
   : "";
@@ -102,6 +103,23 @@ if (production && sessionSecret.length < 32) {
 }
 if (production && loginPathSecret.length < 32) {
   throw new Error("LOGIN_PATH_SECRET precisa ter pelo menos 32 caracteres em produção.");
+}
+if (production && installSecret && installSecret.length < 32) {
+  throw new Error("INSTALL_SECRET precisa ter pelo menos 32 caracteres quando configurada.");
+}
+
+function installAvailable() {
+  return !production || installSecret.length >= 32;
+}
+
+function validInstallSecret(candidate = "") {
+  if (!production) return true;
+  if (!installAvailable()) return false;
+
+  const supplied = Buffer.from(String(candidate));
+  const expected = Buffer.from(installSecret);
+  return supplied.length === expected.length
+    && crypto.timingSafeEqual(supplied, expected);
 }
 
 if (production) {
@@ -474,7 +492,15 @@ function validateReferences(references, content) {
 
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 5 * 1024 * 1024 },
+  limits: {
+    fileSize: 5 * 1024 * 1024,
+    files: 1,
+    fields: 4,
+    parts: 5,
+    fieldNameSize: 64,
+    fieldSize: 4 * 1024,
+    fieldArrayIndexLimit: 10,
+  },
 });
 
 function detectedImageMime(buffer) {
@@ -539,7 +565,7 @@ app.get("/", async (req, res, next) => {
       articles,
       categories,
       selectedCategory: null,
-      needsInstall: !(await hasUsers()),
+      needsInstall: installAvailable() && !(await hasUsers()),
     });
   } catch (error) {
     next(error);
@@ -603,9 +629,18 @@ app.get("/categoria/:slug", async (req, res, next) => {
 app.get("/install", async (req, res, next) => {
   try {
     if (await hasUsers()) return res.redirect("/");
+    if (!installAvailable()) {
+      return res.status(404).render("404", { title: "Página não encontrada" });
+    }
+
     issueCsrf(req, res);
     protectPrivateLoginResponse(res);
-    res.render("install", { title: "Instalação", errors: [], values: {} });
+    res.render("install", {
+      title: "Instalação",
+      errors: [],
+      values: {},
+      requireInstallKey: production,
+    });
   } catch (error) {
     next(error);
   }
@@ -620,6 +655,12 @@ app.post("/install", authLimiter, requireCsrf, async (req, res, next) => {
   const errors = [];
 
   if (await hasUsers()) return res.redirect("/");
+  if (!installAvailable()) {
+    return res.status(404).render("404", { title: "Página não encontrada" });
+  }
+  if (!validInstallSecret(req.body.install_key)) {
+    errors.push("Chave de instalação inválida.");
+  }
   if (!/^[A-Za-z0-9_.-]{3,30}$/.test(username)) errors.push("Usuário inválido.");
   if (displayName.length < 2 || displayName.length > 80) errors.push("Nome de exibição inválido.");
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) errors.push("E-mail inválido.");
@@ -631,6 +672,7 @@ app.post("/install", authLimiter, requireCsrf, async (req, res, next) => {
       title: "Instalação",
       errors,
       values: { username, display_name: displayName, email },
+      requireInstallKey: production,
     });
   }
 
