@@ -38,7 +38,7 @@ function outboundHeaders(request) {
   headers.delete("content-length");
   headers.delete("connection");
   headers.delete("transfer-encoding");
-  headers.delete("accept-encoding");
+  headers.set("accept-encoding", "identity");
   headers.set("x-forwarded-proto", "https");
   headers.set("x-forwarded-host", request.headers.get("host") || request.nextUrl.host);
   return headers;
@@ -58,8 +58,16 @@ async function proxy(request) {
   });
 
   const headers = new Headers();
+  const hopByHopOrBodyEncoding = new Set([
+    "set-cookie",
+    "content-encoding",
+    "content-length",
+    "transfer-encoding",
+    "connection",
+  ]);
+
   for (const [key, value] of response.headers.entries()) {
-    if (key.toLowerCase() !== "set-cookie") headers.append(key, value);
+    if (!hopByHopOrBodyEncoding.has(key.toLowerCase())) headers.append(key, value);
   }
 
   if (typeof response.headers.getSetCookie === "function") {
