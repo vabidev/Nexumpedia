@@ -2292,9 +2292,8 @@ app.use((error, req, res, _next) => {
 });
 
 export { app };
-export default app;
 
-const embeddedRuntime = process.env.NEXUMPEDIA_EMBEDDED === "true" || Boolean(process.env.VERCEL);
+const embeddedRuntime = process.env.NEXUMPEDIA_EMBEDDED === "true";
 let server = null;
 
 if (!embeddedRuntime) {
