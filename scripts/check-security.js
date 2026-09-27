@@ -6,6 +6,13 @@ import { fileURLToPath } from "node:url";
 
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
 const viewsRoot = path.join(root, "views");
+const serverSource = fs.readFileSync(path.join(root, "src", "server.js"), "utf8");
+const packageJson = JSON.parse(fs.readFileSync(path.join(root, "package.json"), "utf8"));
+
+assert.equal(packageJson.dependencies.multer, "2.4.0", "Multer deve permanecer na versão de segurança 2.4.0.");
+assert.match(serverSource, /process\.env\.INSTALL_SECRET/, "Produção deve proteger o bootstrap com INSTALL_SECRET.");
+assert.match(serverSource, /fieldArrayIndexLimit:\s*10/, "Upload multipart deve limitar índices de array em campos.");
+assert.match(serverSource, /files:\s*1/, "Upload multipart deve aceitar apenas um arquivo por requisição.");
 
 function walk(dir) {
   return fs.readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
