@@ -600,9 +600,11 @@ app.get("/categoria/:slug", async (req, res, next) => {
   }
 });
 
-app.get("/install", async (_req, res, next) => {
+app.get("/install", async (req, res, next) => {
   try {
     if (await hasUsers()) return res.redirect("/");
+    issueCsrf(req, res);
+    protectPrivateLoginResponse(res);
     res.render("install", { title: "Instalação", errors: [], values: {} });
   } catch (error) {
     next(error);
@@ -706,6 +708,7 @@ app.get("/login", async (req, res, next) => {
       return res.status(404).render("404", { title: "Página não encontrada" });
     }
 
+    issueCsrf(req, res);
     protectPrivateLoginResponse(res);
     res.render("login", {
       title: "Primeiro acesso",
